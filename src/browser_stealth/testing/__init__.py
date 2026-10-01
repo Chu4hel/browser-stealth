@@ -130,6 +130,10 @@ def __getattr__(name: str) -> Any:
         mod_path, attr_name = _LAZY_MAPPING[name]
         module = importlib.import_module(mod_path, __name__)
         return getattr(module, attr_name)
+    try:
+        return importlib.import_module(f".{name}", __name__)
+    except ImportError:
+        pass
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
