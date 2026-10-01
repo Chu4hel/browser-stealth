@@ -7,7 +7,14 @@ class BrowserStealthError(Exception):
     """Базовое исключение для всех ошибок browser-stealth."""
 
 
-class OptionalDependencyError(BrowserStealthError, ImportError):
+try:
+    from chutils.exceptions.base import OptionalDependencyError as _ChutilsOptionalDependencyError
+    _BaseOptionalDependencyError = _ChutilsOptionalDependencyError
+except ImportError:
+    _BaseOptionalDependencyError = ImportError
+
+
+class OptionalDependencyError(BrowserStealthError, _BaseOptionalDependencyError):
     """Исключение, возникающее при отсутствии опциональной зависимости библиотеки."""
 
     def __init__(
