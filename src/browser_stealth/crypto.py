@@ -41,9 +41,7 @@ def encrypt_portable(data: str, seed: str) -> str:
     return encrypted_bytes.decode("utf-8")
 
 
-def decrypt_portable(
-    encrypted_data: str, seed: str, raise_on_error: bool = False
-) -> str | None:
+def decrypt_portable(encrypted_data: str, seed: str, raise_on_error: bool = False) -> str | None:
     """Дешифрует строку с использованием детерминированного ключа, полученного из seed."""
     if not _HAS_CRYPTOGRAPHY or Fernet is None:
         raise OptionalDependencyError(

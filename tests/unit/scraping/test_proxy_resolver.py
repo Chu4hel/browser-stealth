@@ -1,6 +1,6 @@
-import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from browser_stealth.proxy.models import ProxyConfig
@@ -194,7 +194,7 @@ async def test_probe_socks5_lifecycle() -> None:
 async def test_probe_socks4() -> None:
     resolver = SmartProxyResolver()
     mock_reader = AsyncMock()
-    mock_reader.read.return_value = b"\x00\x5A\x00\x50\x01\x01\x01\x01"
+    mock_reader.read.return_value = b"\x00\x5a\x00\x50\x01\x01\x01\x01"
     mock_writer = _make_mock_writer()
     with patch("asyncio.open_connection", new=AsyncMock(return_value=(mock_reader, mock_writer))):
         assert await resolver.probe_proxy("socks4://user@1.2.3.4:1080") is True

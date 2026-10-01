@@ -38,9 +38,7 @@ class ChromeProxyExtension:
             register_lifecycle_cleanup: Автоматически регистрировать удаление директории в chutils.lifecycle.
         """
         self.proxy: ProxyConfig = parse_proxy(proxy)
-        self._custom_output_dir: Path | None = (
-            Path(output_dir) if output_dir is not None else None
-        )
+        self._custom_output_dir: Path | None = Path(output_dir) if output_dir is not None else None
         self._path: Path | None = None
         self._is_temp: bool = False
         self._register_lifecycle: bool = register_lifecycle_cleanup
@@ -186,9 +184,7 @@ class ChromeProxyExtension:
                 shutil.rmtree(self._path, ignore_errors=True)
                 logger.debug("Удалена временная директория расширения: %s", self._path)
             except Exception as e:
-                logger.warning(
-                    "Не удалось удалить директорию расширения %s: %s", self._path, e
-                )
+                logger.warning("Не удалось удалить директорию расширения %s: %s", self._path, e)
             self._path = None
 
     def __enter__(self) -> Self:

@@ -65,9 +65,7 @@ async def test_profile_warmer_playwright() -> None:
     # Имитируем возврат текущего URL и списка внутренних ссылок
     page.evaluate = AsyncMock(
         side_effect=lambda js, *args: (
-            "https://example.com"
-            if "window.location.href" in js
-            else ["/about", "/contact"]
+            "https://example.com" if "window.location.href" in js else ["/about", "/contact"]
         )
     )
 
@@ -103,9 +101,7 @@ async def test_profile_warmer_nodriver() -> None:
     tab.url = "https://example.com"
     tab.evaluate = AsyncMock(
         side_effect=lambda js, *args: (
-            "https://example.com"
-            if "window.location.href" in js
-            else ["/about", "/contact"]
+            "https://example.com" if "window.location.href" in js else ["/about", "/contact"]
         )
     )
 
@@ -134,9 +130,7 @@ def test_profile_warmer_selenium() -> None:
     driver.current_url = "https://example.com"
     driver.execute_script = MagicMock(
         side_effect=lambda js, *args: (
-            "https://example.com"
-            if "window.location.href" in js
-            else ["/about", "/contact"]
+            "https://example.com" if "window.location.href" in js else ["/about", "/contact"]
         )
     )
 
@@ -205,12 +199,8 @@ def test_default_search_queries_and_helper() -> None:
     assert is_organic_url("https://habr.com/ru/articles/12345/", "yandex")
 
     # Реклама и трекинг
-    assert not is_organic_url(
-        "https://googleads.g.doubleclick.net/pagead/ads?client=ca", "google"
-    )
-    assert not is_organic_url(
-        "https://www.googleadservices.com/pagead/aclk?sa=L", "google"
-    )
+    assert not is_organic_url("https://googleads.g.doubleclick.net/pagead/ads?client=ca", "google")
+    assert not is_organic_url("https://www.googleadservices.com/pagead/aclk?sa=L", "google")
     assert not is_organic_url("https://yabs.yandex.ru/count/12345", "yandex")
 
     # Внутренние ссылки поисковика
@@ -239,9 +229,7 @@ async def test_profile_warmer_playwright_warm_up_search() -> None:
     )
 
     with (
-        patch(
-            "browser_stealth.humanize.warmer.async_type_text", AsyncMock()
-        ) as mock_type,
+        patch("browser_stealth.humanize.warmer.async_type_text", AsyncMock()) as mock_type,
         patch("browser_stealth.humanize.warmer.async_move_mouse", AsyncMock()),
         patch("browser_stealth.humanize.warmer.async_scroll_to", AsyncMock()),
         patch("browser_stealth.humanize.warmer.async_human_sleep", AsyncMock()),
@@ -275,9 +263,7 @@ async def test_profile_warmer_nodriver_warm_up_search() -> None:
     )
 
     with (
-        patch(
-            "browser_stealth.humanize.warmer.async_type_text", AsyncMock()
-        ) as mock_type,
+        patch("browser_stealth.humanize.warmer.async_type_text", AsyncMock()) as mock_type,
         patch("browser_stealth.humanize.warmer.async_move_mouse", AsyncMock()),
         patch("browser_stealth.humanize.warmer.async_scroll_to", AsyncMock()),
         patch("browser_stealth.humanize.warmer.async_human_sleep", AsyncMock()),
@@ -427,11 +413,7 @@ async def test_profile_warmer_nodriver_target_url() -> None:
     target_mock = MagicMock()
     target_mock.url = "https://example.com/target_page"
     tab.target = target_mock
-    tab.evaluate = AsyncMock(
-        side_effect=lambda js, *args: (
-            ["/page2", "/page3"]
-        )
-    )
+    tab.evaluate = AsyncMock(side_effect=lambda js, *args: (["/page2", "/page3"]))
 
     with (
         patch("browser_stealth.humanize.warmer.async_move_mouse", AsyncMock()),
@@ -556,5 +538,3 @@ async def test_warm_up_search_non_list_evaluate() -> None:
             click_result=True,
             surf_result_duration=(0.01, 0.02),
         )
-
-

@@ -55,9 +55,7 @@ def parse_proxy(
     if "://" in clean_str:
         parsed = urlsplit(clean_str)
         if not parsed.scheme or not parsed.hostname or parsed.port is None:
-            raise ValueError(
-                f"Не удалось распознать формат прокси в URL схеме: {clean_str}"
-            )
+            raise ValueError(f"Не удалось распознать формат прокси в URL схеме: {clean_str}")
         protocol = parsed.scheme.lower()
         host = parsed.hostname
         port = parsed.port
@@ -130,4 +128,3 @@ def parse_proxy(
         username=username,
         password=password,
     )
-

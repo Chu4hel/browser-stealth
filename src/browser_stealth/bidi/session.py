@@ -33,7 +33,9 @@ def extract_bidi_url(target: str | object) -> str:
     if isinstance(target, str):
         url = target.strip()
         if not url.startswith(("ws://", "wss://")):
-            raise ValueError(f"Недопустимый протокол WebSocket URL: {target}. Ожидалось ws:// или wss://")
+            raise ValueError(
+                f"Недопустимый протокол WebSocket URL: {target}. Ожидалось ws:// или wss://"
+            )
         return url
 
     # Проверка Selenium 4 driver.bidi_connection

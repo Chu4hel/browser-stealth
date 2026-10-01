@@ -71,7 +71,9 @@ class BiDiClient:
             self._listen_task = asyncio.create_task(self._listen_loop())
             logger.debug("Установлено соединение WebDriver BiDi с %s", self.ws_url)
         except Exception as exc:
-            raise BiDiConnectionError(f"Не удалось подключиться к WebDriver BiDi по адресу {self.ws_url}: {exc}") from exc
+            raise BiDiConnectionError(
+                f"Не удалось подключиться к WebDriver BiDi по адресу {self.ws_url}: {exc}"
+            ) from exc
 
     async def close(self) -> None:
         """Закрывает соединение с WebDriver BiDi и останавливает фоновые задачи."""
@@ -139,7 +141,9 @@ class BiDiClient:
             return await asyncio.wait_for(fut, timeout=timeout)
         except TimeoutError as err:
             self._pending_commands.pop(cmd_id, None)
-            raise BiDiTimeoutError(f"Превышен таймаут {timeout}с ожидания команды '{method}' (id={cmd_id})") from err
+            raise BiDiTimeoutError(
+                f"Превышен таймаут {timeout}с ожидания команды '{method}' (id={cmd_id})"
+            ) from err
         except Exception:
             self._pending_commands.pop(cmd_id, None)
             raise
@@ -221,7 +225,9 @@ class BiDiClient:
             event_name: Имя события.
             params: Параметры события.
         """
-        handlers = list(self._event_listeners.get(event_name, [])) + list(self._event_listeners.get("*", []))
+        handlers = list(self._event_listeners.get(event_name, [])) + list(
+            self._event_listeners.get("*", [])
+        )
         for handler in handlers:
             try:
                 res = handler(params)

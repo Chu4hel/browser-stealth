@@ -195,9 +195,7 @@ async def test_apply_antidetect_nodriver_user_agent_override() -> None:
     try:
         await apply_antidetect_nodriver(mock_tab, config=cfg)
         assert mock_emulation.set_user_agent_override.called
-        mock_emulation.set_user_agent_override.assert_called_once_with(
-            user_agent=test_ua
-        )
+        mock_emulation.set_user_agent_override.assert_called_once_with(user_agent=test_ua)
         assert mock_tab.send.called
     finally:
         sys.modules.pop("nodriver", None)
@@ -214,4 +212,3 @@ def test_fingerprint_profile_to_antidetect_config_user_agent() -> None:
     config = profile.to_antidetect_config()
 
     assert config.user_agent == "Custom-UA/2.0"
-

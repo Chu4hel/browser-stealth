@@ -82,6 +82,7 @@ async def async_move_mouse(
         algorithm: Алгоритм генерации траектории ('bezier' или 'windmouse').
         timeout: Максимальное время ожидания операции (в секундах).
     """
+
     async def _move() -> None:
         start_pt = start or (0, 0)
         algo = algorithm.lower().replace("_", "").replace("-", "")
@@ -174,6 +175,7 @@ async def async_scroll_to(
         delay_between_steps: Задержка между шагами в секундах.
         timeout: Максимальное время ожидания операции (в секундах).
     """
+
     async def _scroll() -> None:
         if _is_nodriver(page):
             _ensure_nodriver()
@@ -251,6 +253,7 @@ async def async_type_text(
         paste_delay_after: Диапазон паузы проверки после вставки из буфера (в секундах).
         timeout: Таймаут выполнения операции в секундах.
     """
+
     async def _type() -> None:
         delay_gen = JitterDelayGenerator(strategy="lognormal", jitter=0.25)
         typo_gen = KeyboardTypoGenerator()
@@ -293,7 +296,6 @@ async def async_type_text(
             )
 
     await _run_with_timeout(_type(), timeout)
-
 
 
 def move_mouse(
@@ -369,12 +371,8 @@ def scroll_to(
     """
     _ensure_selenium()
 
-    scroll_x = driver.execute_script(
-        "return window.scrollX || window.pageXOffset || 0;"
-    )
-    scroll_y = driver.execute_script(
-        "return window.scrollY || window.pageYOffset || 0;"
-    )
+    scroll_x = driver.execute_script("return window.scrollX || window.pageXOffset || 0;")
+    scroll_y = driver.execute_script("return window.scrollY || window.pageYOffset || 0;")
 
     points = _generate_scroll_points(scroll_x, scroll_y, x, y, steps)
     for px, py in points:
@@ -493,22 +491,19 @@ async def async_click(
         hold_time: Диапазон задержки удержания кнопки мыши (в секундах).
         timeout: Таймаут выполнения операции в секундах.
     """
+
     async def _click() -> None:
         target_x = x
         target_y = y
 
         if target_x is None or target_y is None:
             if selector is None:
-                raise ValueError(
-                    "Необходимо указать координаты (x, y) или CSS-селектор selector."
-                )
+                raise ValueError("Необходимо указать координаты (x, y) или CSS-селектор selector.")
 
             target_x, target_y = await _resolve_async_element_coordinates(page, selector)
 
         # 1. Плавное перемещение к цели
-        await async_move_mouse(
-            page, x=target_x, y=target_y, start=start, algorithm=algorithm
-        )
+        await async_move_mouse(page, x=target_x, y=target_y, start=start, algorithm=algorithm)
 
         # 2. Пауза перед нажатием
         await asyncio.sleep(random.uniform(0.04, 0.12))
@@ -523,9 +518,7 @@ async def async_click(
             _ensure_nodriver()
             from nodriver.cdp import input_ as cdp_input
 
-            btn = (
-                "left" if button == "left" else ("right" if button == "right" else "middle")
-            )
+            btn = "left" if button == "left" else ("right" if button == "right" else "middle")
             await page.send(
                 cdp_input.dispatch_mouse_event(
                     type_="mousePressed",
@@ -555,5 +548,3 @@ async def async_click(
         await asyncio.sleep(random.uniform(0.03, 0.08))
 
     await _run_with_timeout(_click(), timeout)
-
-

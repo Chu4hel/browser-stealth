@@ -7,12 +7,12 @@ from pathlib import Path
 
 from pytest_mock import MockerFixture
 
+from browser_stealth import ProfileManager, nodriver, profiles
 from browser_stealth.profiles.hygiene import (
     is_profile_locked,
     sanitize_profile,
     sanitize_profile_crash_state,
 )
-from browser_stealth import ProfileManager, nodriver, profiles
 
 
 def test_hygiene_exports_and_aliases() -> None:

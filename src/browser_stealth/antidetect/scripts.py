@@ -8,9 +8,7 @@ from typing import Any
 from .mobile import get_ios_js, get_motion_js, get_orientation_js, get_touch_js
 
 DEFAULT_WEBGL_VENDOR = "Google Inc. (NVIDIA)"
-DEFAULT_WEBGL_RENDERER = (
-    "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)"
-)
+DEFAULT_WEBGL_RENDERER = "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)"
 DEFAULT_HARDWARE_CONCURRENCY = 8
 DEFAULT_DEVICE_MEMORY = 8
 

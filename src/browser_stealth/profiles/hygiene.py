@@ -130,7 +130,9 @@ def sanitize_profile(
                     )
                     logger.debug("Флаги падений сброшены в Local State: %s", local_state_file)
             except Exception as exc:
-                logger.debug("Не удалось обновить Local State профиля %s: %s", local_state_file, exc)
+                logger.debug(
+                    "Не удалось обновить Local State профиля %s: %s", local_state_file, exc
+                )
 
     # 2. Очистка артефактов сессий и вкладок
     if clear_sessions:
@@ -187,7 +189,9 @@ def sanitize_profile(
                                 remove_path(target)
                             logger.debug("Удален артефакт сессии Chromium: %s", target)
                         except (PermissionError, OSError) as exc:
-                            logger.debug("Файл сессии занят процессом (%s), пропуск: %s", target.name, exc)
+                            logger.debug(
+                                "Файл сессии занят процессом (%s), пропуск: %s", target.name, exc
+                            )
                         except Exception as exc:
                             logger.warning("Не удалось удалить артефакт сессии %s: %s", target, exc)
 

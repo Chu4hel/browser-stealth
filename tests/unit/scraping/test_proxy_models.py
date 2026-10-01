@@ -151,9 +151,7 @@ def test_parse_proxy_invalid() -> None:
 
 def test_proxy_config_to_string() -> None:
     """Проверяет форматирование ProxyConfig в различные строковые представления."""
-    proxy = ProxyConfig(
-        host="1.2.3.4", port=8080, protocol="http", username="u", password="p"
-    )
+    proxy = ProxyConfig(host="1.2.3.4", port=8080, protocol="http", username="u", password="p")
     assert proxy.to_string("url") == "http://u:p@1.2.3.4:8080"
     assert proxy.to_string("host:port") == "1.2.3.4:8080"
     assert proxy.to_string("host:port:user:pass") == "1.2.3.4:8080:u:p"

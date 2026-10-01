@@ -10,12 +10,12 @@ from typing import Any
 import pytest
 import websockets
 
+from browser_stealth.antidetect.config import AntidetectConfig
 from browser_stealth.bidi import (
     BiDiClient,
     BiDiSession,
     apply_antidetect_bidi,
 )
-from browser_stealth.antidetect.config import AntidetectConfig
 
 
 @asynccontextmanager

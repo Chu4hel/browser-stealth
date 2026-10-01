@@ -87,10 +87,7 @@ class DOMNode:
         # Фильтруем результаты относительно исходного корня
         final_results: list[DOMNode] = []
         for cand in self._collect_descendants():
-            if (
-                _matches_compound_selector(cand, selector, self)
-                and cand not in final_results
-            ):
+            if _matches_compound_selector(cand, selector, self) and cand not in final_results:
                 final_results.append(cand)
         return final_results
 
@@ -150,9 +147,7 @@ def _matches_simple_selector(node: DOMNode, selector: str) -> bool:
     return False
 
 
-def _matches_compound_selector(
-    node: DOMNode, selector: str, root_scope: DOMNode
-) -> bool:
+def _matches_compound_selector(node: DOMNode, selector: str, root_scope: DOMNode) -> bool:
     """Проверяет соответствие узла составному селектору (включая цепочки предков)."""
     parts = [p.strip() for p in selector.split() if p.strip()]
     if not parts:

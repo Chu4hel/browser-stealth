@@ -133,6 +133,7 @@ async def test_apply_antidetect_nodriver_mobile() -> None:
     mock_nodriver.cdp = mock_cdp
 
     import sys
+
     sys.modules["nodriver"] = mock_nodriver
     sys.modules["nodriver.cdp"] = mock_cdp
     sys.modules["nodriver.cdp.emulation"] = mock_emulation
@@ -150,7 +151,9 @@ async def test_apply_antidetect_nodriver_mobile() -> None:
         assert kwargs.get("device_scale_factor") == 2.625
 
         # Проверяем включение тач-эмуляции
-        mock_emulation.set_touch_emulation_enabled.assert_called_once_with(enabled=True, max_touch_points=5)
+        mock_emulation.set_touch_emulation_enabled.assert_called_once_with(
+            enabled=True, max_touch_points=5
+        )
     finally:
         sys.modules.pop("nodriver", None)
         sys.modules.pop("nodriver.cdp", None)

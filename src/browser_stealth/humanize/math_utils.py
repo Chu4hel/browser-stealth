@@ -265,12 +265,8 @@ class WindMouseGenerator:
                 cur_max_s = max(2.0, max_s * factor)
 
             # Вектор случайного ветра (дрейф / мышечные микроколебания)
-            w_x = (
-                w_x / sqrt3 + (random.random() * (cur_wind * 2.0 + 1.0) - cur_wind) / sqrt5
-            )
-            w_y = (
-                w_y / sqrt5 + (random.random() * (cur_wind * 2.0 + 1.0) - cur_wind) / sqrt5
-            )
+            w_x = w_x / sqrt3 + (random.random() * (cur_wind * 2.0 + 1.0) - cur_wind) / sqrt5
+            w_y = w_y / sqrt5 + (random.random() * (cur_wind * 2.0 + 1.0) - cur_wind) / sqrt5
 
             # Сила гравитационного притяжения к цели
             v_x += w_x + cur_gravity * (dest_x - current_x) / dist
@@ -474,7 +470,9 @@ class TypoAction(NamedTuple):
     """Представляет действие ввода символа или нажатия клавиши при имитации печати."""
 
     action: str  # 'type', 'backspace' или 'key'
-    char: str  # символ для ввода (или имя клавиши: 'ArrowLeft', 'End', 'ArrowRight' для action='key')
+    char: (
+        str  # символ для ввода (или имя клавиши: 'ArrowLeft', 'End', 'ArrowRight' для action='key')
+    )
 
 
 class KeyboardTypoGenerator:
@@ -526,9 +524,7 @@ class KeyboardTypoGenerator:
         if not text:
             return sequence
 
-        eff_layout_rate = (
-            self.layout_error_rate if layout_error_rate is None else layout_error_rate
-        )
+        eff_layout_rate = self.layout_error_rate if layout_error_rate is None else layout_error_rate
 
         # Ошибка раскладки возможна СТРОГО в начале ввода
         if eff_layout_rate > 0.0 and random.random() < eff_layout_rate:
@@ -560,9 +556,7 @@ class KeyboardTypoGenerator:
                         sequence.append(TypoAction("backspace", ""))
 
         n = len(text)
-        eff_delayed_rate = (
-            self.delayed_fix_rate if delayed_fix_rate is None else delayed_fix_rate
-        )
+        eff_delayed_rate = self.delayed_fix_rate if delayed_fix_rate is None else delayed_fix_rate
 
         # Планируем отложенное исправление опечатки, если текст достаточно длинный
         delayed_fix_pos: int | None = None
@@ -624,9 +618,7 @@ class KeyboardTypoGenerator:
                     # Одиночная опечатка в символе
                     char = text[i]
                     lowered = char.lower()
-                    neighbors = _QWERTY_NEIGHBORS.get(lowered) or _JCUKEN_NEIGHBORS.get(
-                        lowered
-                    )
+                    neighbors = _QWERTY_NEIGHBORS.get(lowered) or _JCUKEN_NEIGHBORS.get(lowered)
                     wrong_char = random.choice(neighbors) if neighbors else char
                     if char.isupper():
                         wrong_char = wrong_char.upper()
@@ -658,11 +650,7 @@ class KeyboardTypoGenerator:
             neighbors = _QWERTY_NEIGHBORS.get(lowered) or _JCUKEN_NEIGHBORS.get(lowered)
 
             # Решаем, делать ли обычную мгновенную опечатку
-            if (
-                error_rate > 0.0
-                and random.random() < error_rate
-                and neighbors is not None
-            ):
+            if error_rate > 0.0 and random.random() < error_rate and neighbors is not None:
                 # Берем случайного соседа
                 wrong_char = random.choice(neighbors)
                 # Сохраняем регистр

@@ -1,8 +1,8 @@
 """Тесты проверки отсутствия побочных эффектов при авторегистрации pytest-плагина."""
 
 import importlib
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from chutils.logger import setup_logger
 
@@ -69,10 +69,11 @@ def test_pytest_runner_allows_file_logging_when_explicitly_requested(tmp_path: P
 
     # Явный log_file_name
     custom_log = tmp_path / "custom.log"
-    logger1 = setup_logger("explicit_file_logger", log_file_name=str(custom_log), force_reconfigure=True)
+    logger1 = setup_logger(
+        "explicit_file_logger", log_file_name=str(custom_log), force_reconfigure=True
+    )
     assert any(isinstance(h, logging.FileHandler) for h in logger1.handlers)
 
     # Явный file_logging=True
     logger2 = setup_logger("explicit_flag_logger", file_logging=True, force_reconfigure=True)
     assert any(isinstance(h, logging.FileHandler) for h in logger2.handlers)
-

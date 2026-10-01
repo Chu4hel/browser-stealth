@@ -39,9 +39,7 @@ async def test_in_memory_queue_metrics():
 @pytest.mark.asyncio
 async def test_persistent_queue_metrics(tmp_path):
     db_file = tmp_path / "metrics_test.db"
-    queue = PersistentTaskQueue(
-        db_path=db_file, name="test_sqlite", enable_metrics=True
-    )
+    queue = PersistentTaskQueue(db_path=db_file, name="test_sqlite", enable_metrics=True)
 
     task = ScrapingTask(url="https://example.com/2")
     await queue.push(task)

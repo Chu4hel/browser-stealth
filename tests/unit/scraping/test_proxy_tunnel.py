@@ -50,15 +50,11 @@ async def test_async_proxy_tunnel_connect_auth_injection() -> None:
     try:
         assert tunnel.port > 0
         assert tunnel.local_url == f"http://127.0.0.1:{tunnel.port}"
-        assert (
-            tunnel.to_chrome_arg() == f"--proxy-server=http://127.0.0.1:{tunnel.port}"
-        )
+        assert tunnel.to_chrome_arg() == f"--proxy-server=http://127.0.0.1:{tunnel.port}"
         assert tunnel.to_proxy_config().port == tunnel.port
 
         # Подключаемся клиентом к локальному туннелю БЕЗ авторизации
-        client_reader, client_writer = await asyncio.open_connection(
-            "127.0.0.1", tunnel.port
-        )
+        client_reader, client_writer = await asyncio.open_connection("127.0.0.1", tunnel.port)
         # Отправляем CONNECT запрос
         client_writer.write(
             b"CONNECT target-site.org:443 HTTP/1.1\r\nHost: target-site.org:443\r\n\r\n"
@@ -170,12 +166,8 @@ async def test_async_proxy_tunnel_socks5_upstream() -> None:
 
     try:
         # Клиент шлет CONNECT example.com:443 в HTTP туннель
-        client_reader, client_writer = await asyncio.open_connection(
-            "127.0.0.1", tunnel.port
-        )
-        client_writer.write(
-            b"CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n"
-        )
+        client_reader, client_writer = await asyncio.open_connection("127.0.0.1", tunnel.port)
+        client_writer.write(b"CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n")
         await client_writer.drain()
 
         resp = await client_reader.readuntil(b"\r\n\r\n")

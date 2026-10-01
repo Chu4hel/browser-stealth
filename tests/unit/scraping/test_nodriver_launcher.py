@@ -17,9 +17,7 @@ from browser_stealth.launchers.nodriver import (
 def test_get_nodriver_module_not_installed() -> None:
     """Проверка выброса понятной ошибки при отсутствии nodriver."""
     with patch.dict("sys.modules", {"nodriver": None}):
-        with patch(
-            "builtins.__import__", side_effect=ImportError("No module named 'nodriver'")
-        ):
+        with patch("builtins.__import__", side_effect=ImportError("No module named 'nodriver'")):
             with pytest.raises(
                 ImportError,
                 match="Для использования nodriver необходимо установить библиотеку",
@@ -38,9 +36,7 @@ async def test_launch_nodriver_default() -> None:
 
     with (
         patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
-        patch.object(
-            AntidetectConfig, "apply_to_nodriver", new_callable=AsyncMock
-        ) as mock_apply,
+        patch.object(AntidetectConfig, "apply_to_nodriver", new_callable=AsyncMock) as mock_apply,
     ):
         browser = await launch_nodriver(headless=True)
         assert browser is mock_browser
@@ -66,9 +62,7 @@ async def test_launch_nodriver_with_proxy_and_custom_args() -> None:
 
     with (
         patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
-        patch(
-            "browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()
-        ),
+        patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
     ):
         await launch_nodriver(
             proxy="http://1.2.3.4:8080",
@@ -91,9 +85,7 @@ async def test_nodriver_session_context_manager() -> None:
 
     with (
         patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
-        patch(
-            "browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()
-        ),
+        patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
     ):
         async with nodriver_session(headless=False) as browser:
             assert browser is mock_browser
@@ -113,9 +105,7 @@ async def test_launch_nodriver_user_data_dir_and_executable() -> None:
 
     with (
         patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
-        patch(
-            "browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()
-        ),
+        patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
     ):
         await launch_nodriver(
             user_data_dir="/tmp/chrome_profile",
@@ -136,9 +126,7 @@ async def test_launch_nodriver_sanitizes_profile() -> None:
 
     with (
         patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
-        patch(
-            "browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()
-        ),
+        patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
         patch("browser_stealth.launchers.nodriver.sanitize_profile") as mock_sanitize,
     ):
         await launch_nodriver(user_data_dir="/tmp/chrome_profile")
@@ -147,14 +135,14 @@ async def test_launch_nodriver_sanitizes_profile() -> None:
 
 def test_scraping_module_exports() -> None:
     """Проверка ленивого экспорта launch_nodriver и nodriver_session из browser_stealth."""
-    from chutils import scraping
+    import browser_stealth
 
-    assert hasattr(scraping, "launch_nodriver")
-    assert hasattr(scraping, "nodriver_session")
-    assert hasattr(scraping, "close_tab")
-    assert "launch_nodriver" in scraping.__all__
-    assert "nodriver_session" in scraping.__all__
-    assert "close_tab" in scraping.__all__
+    assert hasattr(browser_stealth, "launch_nodriver")
+    assert hasattr(browser_stealth, "nodriver_session")
+    assert hasattr(browser_stealth, "close_tab")
+    assert "launch_nodriver" in browser_stealth.__all__
+    assert "nodriver_session" in browser_stealth.__all__
+    assert "close_tab" in browser_stealth.__all__
 
 
 @pytest.mark.asyncio
@@ -173,6 +161,7 @@ async def test_close_tab_success() -> None:
 async def test_close_tab_timeout_handled() -> None:
     """Проверка обработки таймаута при зависшем CDP close."""
     import asyncio
+
     from browser_stealth.launchers.nodriver import close_tab
 
     mock_tab = MagicMock()
@@ -196,4 +185,3 @@ async def test_close_tab_exception_handled() -> None:
 
     # Не должно выбрасывать исключение
     await close_tab(mock_tab, timeout=1.0)
-

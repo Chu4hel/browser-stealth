@@ -5,8 +5,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from chutils.http.tls_client import TLSAsyncClient, TLSSession
+
 from browser_stealth.antidetect import extract_clearance_cookies
 
 
@@ -34,10 +34,7 @@ async def test_extract_clearance_cookies_playwright() -> None:
 
     assert result["cookies"]["cf_clearance"] == "secret_clearance_123"
     assert result["cookies"]["session_id"] == "sess_456"
-    assert (
-        result["user_agent"]
-        == "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-    )
+    assert result["user_agent"] == "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
 
 
 def test_extract_clearance_cookies_selenium() -> None:
@@ -47,16 +44,12 @@ def test_extract_clearance_cookies_selenium() -> None:
     mock_driver.get_cookies.return_value = [
         {"name": "cf_clearance", "value": "selenium_cf_789"},
     ]
-    mock_driver.execute_script.return_value = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SeleniumUA"
-    )
+    mock_driver.execute_script.return_value = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SeleniumUA"
 
     result = extract_clearance_cookies(mock_driver)
 
     assert result["cookies"]["cf_clearance"] == "selenium_cf_789"
-    assert (
-        result["user_agent"] == "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SeleniumUA"
-    )
+    assert result["user_agent"] == "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SeleniumUA"
 
 
 @pytest.mark.asyncio

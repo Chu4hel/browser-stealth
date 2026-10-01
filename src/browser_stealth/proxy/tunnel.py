@@ -188,9 +188,7 @@ class AsyncProxyTunnel:
                 # HTTP CONNECT Forwarding
                 connect_req = f"CONNECT {target} HTTP/1.1\r\nHost: {target}\r\n"
                 if self.proxy.has_auth and self.proxy.basic_auth_header:
-                    connect_req += (
-                        f"Proxy-Authorization: {self.proxy.basic_auth_header}\r\n"
-                    )
+                    connect_req += f"Proxy-Authorization: {self.proxy.basic_auth_header}\r\n"
                 connect_req += "Proxy-Connection: keep-alive\r\n\r\n"
                 remote_writer.write(connect_req.encode("iso-8859-1"))
                 await remote_writer.drain()
@@ -198,9 +196,7 @@ class AsyncProxyTunnel:
                 # Читаем ответ upstream прокси
                 resp = await remote_reader.readuntil(b"\r\n\r\n")
                 if not resp.startswith((b"HTTP/1.1 200", b"HTTP/1.0 200")):
-                    first_line = (
-                        resp.split(b"\r\n", 1)[0].decode("iso-8859-1", errors="replace")
-                    )
+                    first_line = resp.split(b"\r\n", 1)[0].decode("iso-8859-1", errors="replace")
                     logger.warning(
                         "Удаленный прокси %s отклонил CONNECT-запрос к %s: %s",
                         self.proxy.masked_url,
@@ -254,16 +250,12 @@ class AsyncProxyTunnel:
             # Внедряем заголовок Proxy-Authorization, если настроена аутентификация
             modified_headers = initial_headers
             if self.proxy.has_auth and self.proxy.basic_auth_header:
-                auth_hdr = (
-                    f"Proxy-Authorization: {self.proxy.basic_auth_header}\r\n".encode(
-                        "iso-8859-1"
-                    )
+                auth_hdr = f"Proxy-Authorization: {self.proxy.basic_auth_header}\r\n".encode(
+                    "iso-8859-1"
                 )
                 idx = modified_headers.find(b"\r\n\r\n")
                 if idx != -1:
-                    modified_headers = (
-                        modified_headers[:idx] + b"\r\n" + auth_hdr + b"\r\n"
-                    )
+                    modified_headers = modified_headers[:idx] + b"\r\n" + auth_hdr + b"\r\n"
 
             remote_writer.write(modified_headers)
             await remote_writer.drain()
@@ -314,9 +306,7 @@ class AsyncProxyTunnel:
             if auth_resp[1] != 0x00:
                 raise PermissionError("Ошибка аутентификации в SOCKS5 прокси")
         elif method_resp[1] != 0x00:
-            raise ConnectionError(
-                f"Неподдерживаемый метод аутентификации SOCKS5: {method_resp[1]}"
-            )
+            raise ConnectionError(f"Неподдерживаемый метод аутентификации SOCKS5: {method_resp[1]}")
 
         # 3. Запрос CONNECT
         if ":" in target:
@@ -350,9 +340,7 @@ class AsyncProxyTunnel:
         elif atyp == 0x04:  # IPv6
             await writer_reader.readexactly(16 + 2)
 
-    async def _pipe(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-    ) -> None:
+    async def _pipe(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Передает поток байтов из reader в writer до достижения EOF."""
         try:
             while not reader.at_eof():

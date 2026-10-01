@@ -165,9 +165,7 @@ class PersistentTaskQueue(BaseTaskQueue):
 
             try:
                 with self._conn:
-                    self._conn.execute(
-                        "INSERT INTO seen (dedup_key) VALUES (?)", (task.dedup_key,)
-                    )
+                    self._conn.execute("INSERT INTO seen (dedup_key) VALUES (?)", (task.dedup_key,))
                     self._conn.execute(
                         """
                         INSERT INTO tasks (task_id, url, priority, payload_json, attempts,
@@ -254,9 +252,7 @@ class PersistentTaskQueue(BaseTaskQueue):
             if self._conn is not None:
                 task.last_error = error
                 task.attempts += 1
-                new_status = (
-                    "pending" if task.attempts < task.max_attempts else "failed"
-                )
+                new_status = "pending" if task.attempts < task.max_attempts else "failed"
 
                 self._conn.execute(
                     """
@@ -365,9 +361,7 @@ class RedisTaskQueue(BaseTaskQueue):
         if not res:
             return None
 
-        task_id = (
-            res[0][0].decode("utf-8") if isinstance(res[0][0], bytes) else res[0][0]
-        )
+        task_id = res[0][0].decode("utf-8") if isinstance(res[0][0], bytes) else res[0][0]
         data_key = f"{self.queue_name}:task:{task_id}"
         raw_data = await self._client.get(data_key)
         if not raw_data:

@@ -5,9 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # Потребуется mock_ensure, чтобы исключить ошибки импорта библиотек
 @patch("browser_stealth.antidetect._ensure_playwright")
 @patch("browser_stealth.antidetect._ensure_selenium")
-def test_antidetect_helpers(
-    mock_ensure_sel: MagicMock, mock_ensure_pw: MagicMock
-) -> None:
+def test_antidetect_helpers(mock_ensure_sel: MagicMock, mock_ensure_pw: MagicMock) -> None:
     from browser_stealth.antidetect import (
         apply_antidetect_playwright,
         apply_antidetect_selenium,
@@ -46,9 +44,7 @@ def test_antidetect_helpers(
 
 @patch("browser_stealth.antidetect._ensure_playwright")
 @patch("browser_stealth.antidetect._ensure_selenium")
-def test_antidetect_custom_params(
-    mock_ensure_sel: MagicMock, mock_ensure_pw: MagicMock
-) -> None:
+def test_antidetect_custom_params(mock_ensure_sel: MagicMock, mock_ensure_pw: MagicMock) -> None:
     import asyncio
 
     from browser_stealth.antidetect import (
@@ -104,9 +100,7 @@ def test_antidetect_nodriver(mock_ensure: MagicMock) -> None:
     import sys
 
     mock_page = MagicMock()
-    mock_page.add_script_to_evaluate_on_new_document = MagicMock(
-        return_value="mock_cdp_command"
-    )
+    mock_page.add_script_to_evaluate_on_new_document = MagicMock(return_value="mock_cdp_command")
 
     mock_cdp = MagicMock()
     mock_cdp.page = mock_page
@@ -138,9 +132,7 @@ def test_antidetect_nodriver(mock_ensure: MagicMock) -> None:
 
         # Проверяем, что CDP-метод вызван с правильным JS-кодом
         mock_page.add_script_to_evaluate_on_new_document.assert_called_once()
-        js_code = mock_page.add_script_to_evaluate_on_new_document.call_args[1][
-            "source"
-        ]
+        js_code = mock_page.add_script_to_evaluate_on_new_document.call_args[1]["source"]
         assert '"NVIDIA Corporation"' in js_code
         assert '"NVIDIA GeForce RTX 4090"' in js_code
         assert "24" in js_code
@@ -185,9 +177,7 @@ def test_antidetect_nodriver_stealth_minimal(mock_ensure: MagicMock) -> None:
     import sys
 
     mock_page = MagicMock()
-    mock_page.add_script_to_evaluate_on_new_document = MagicMock(
-        return_value="mock_cdp_command"
-    )
+    mock_page.add_script_to_evaluate_on_new_document = MagicMock(return_value="mock_cdp_command")
 
     mock_cdp = MagicMock()
     mock_cdp.page = mock_page
@@ -207,9 +197,7 @@ def test_antidetect_nodriver_stealth_minimal(mock_ensure: MagicMock) -> None:
         asyncio.run(apply_antidetect_nodriver(tab, stealth_minimal=True))
 
         mock_page.add_script_to_evaluate_on_new_document.assert_called_once()
-        js_code = mock_page.add_script_to_evaluate_on_new_document.call_args[1][
-            "source"
-        ]
+        js_code = mock_page.add_script_to_evaluate_on_new_document.call_args[1]["source"]
 
         # В минимальном режиме не должны подменяться Canvas и WebGL
         assert "isMinimal = true" in js_code
@@ -234,20 +222,15 @@ def test_antidetect_nodriver_device_metrics_override(mock_ensure: MagicMock) -> 
     """Проверяет отправку emulation.set_device_metrics_override при наличии screen_width/screen_height."""
     import asyncio
     import sys
+
     from browser_stealth.antidetect.config import AntidetectConfig
 
     mock_page = MagicMock()
-    mock_page.add_script_to_evaluate_on_new_document = MagicMock(
-        return_value="mock_page_cmd"
-    )
+    mock_page.add_script_to_evaluate_on_new_document = MagicMock(return_value="mock_page_cmd")
 
     mock_emulation = MagicMock()
-    mock_emulation.set_device_metrics_override = MagicMock(
-        return_value="mock_metrics_cmd"
-    )
-    mock_emulation.set_user_agent_override = MagicMock(
-        return_value="mock_ua_cmd"
-    )
+    mock_emulation.set_device_metrics_override = MagicMock(return_value="mock_metrics_cmd")
+    mock_emulation.set_user_agent_override = MagicMock(return_value="mock_ua_cmd")
 
     mock_cdp = MagicMock()
     mock_cdp.page = mock_page
@@ -385,6 +368,3 @@ def test_fingerprint_profile_media_devices_to_antidetect_config() -> None:
     init_script = cfg.get_init_script()
     assert "Studio Mic" in init_script
     assert "Studio Headphones" in init_script
-
-
-

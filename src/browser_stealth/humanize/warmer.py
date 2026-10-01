@@ -101,9 +101,7 @@ class ProfileWarmer:
                 first_run = True
 
                 # Имитация человеческих действий
-                while first_run or (
-                    asyncio.get_event_loop().time() - start_time < site_duration
-                ):
+                while first_run or (asyncio.get_event_loop().time() - start_time < site_duration):
                     first_run = False
                     action = random.choice(
                         [
@@ -180,9 +178,7 @@ class ProfileWarmer:
         if queries is not None:
             chosen_queries = queries[:queries_count]
         else:
-            chosen_queries = get_random_search_queries(
-                count=queries_count, category=category
-            )
+            chosen_queries = get_random_search_queries(count=queries_count, category=category)
 
         config = get_search_engine_config(search_engine)
 
@@ -253,9 +249,7 @@ class ProfileWarmer:
                         except Exception:
                             pass
                 else:
-                    search_url = config["search_url"].format(
-                        query=urllib.parse.quote_plus(query)
-                    )
+                    search_url = config["search_url"].format(query=urllib.parse.quote_plus(query))
                     if _is_nodriver(self.browser_or_tab):
                         await self.browser_or_tab.get(search_url)
                     else:
@@ -298,15 +292,11 @@ class ProfileWarmer:
 
                     if isinstance(links, list):
                         organic_links = [
-                            link
-                            for link in links
-                            if is_organic_url(link, search_engine)
+                            link for link in links if is_organic_url(link, search_engine)
                         ]
 
                         if organic_links:
-                            chosen_link = random.choice(
-                                organic_links[: min(5, len(organic_links))]
-                            )
+                            chosen_link = random.choice(organic_links[: min(5, len(organic_links))])
                             if _is_nodriver(self.browser_or_tab):
                                 await self.browser_or_tab.get(chosen_link)
                             else:
@@ -316,10 +306,7 @@ class ProfileWarmer:
 
                             surf_duration = random.uniform(*surf_result_duration)
                             start_time = asyncio.get_event_loop().time()
-                            while (
-                                asyncio.get_event_loop().time() - start_time
-                                < surf_duration
-                            ):
+                            while asyncio.get_event_loop().time() - start_time < surf_duration:
                                 await async_scroll_to(
                                     self.browser_or_tab,
                                     0,
@@ -477,9 +464,7 @@ class SyncProfileWarmer:
         if queries is not None:
             chosen_queries = queries[:queries_count]
         else:
-            chosen_queries = get_random_search_queries(
-                count=queries_count, category=category
-            )
+            chosen_queries = get_random_search_queries(count=queries_count, category=category)
 
         config = get_search_engine_config(search_engine)
 
@@ -517,16 +502,12 @@ class SyncProfileWarmer:
                         from selenium.webdriver.common.by import By
                         from selenium.webdriver.common.keys import Keys
 
-                        input_elem = self.driver.find_element(
-                            By.CSS_SELECTOR, input_selector
-                        )
+                        input_elem = self.driver.find_element(By.CSS_SELECTOR, input_selector)
                         input_elem.send_keys(Keys.ENTER)
                     except Exception:
                         pass
                 else:
-                    search_url = config["search_url"].format(
-                        query=urllib.parse.quote_plus(query)
-                    )
+                    search_url = config["search_url"].format(query=urllib.parse.quote_plus(query))
                     self.driver.get(search_url)
 
                 human_sleep(2.0, 4.0)
@@ -560,15 +541,11 @@ class SyncProfileWarmer:
 
                     if isinstance(links, list):
                         organic_links = [
-                            link
-                            for link in links
-                            if is_organic_url(link, search_engine)
+                            link for link in links if is_organic_url(link, search_engine)
                         ]
 
                         if organic_links:
-                            chosen_link = random.choice(
-                                organic_links[: min(5, len(organic_links))]
-                            )
+                            chosen_link = random.choice(organic_links[: min(5, len(organic_links))])
                             self.driver.get(chosen_link)
                             human_sleep(2.0, 4.0)
 
@@ -612,9 +589,7 @@ class SyncProfileWarmer:
 
         profile = ProfileManager.export_from_selenium(self.driver)
         profile.metadata["warmed_up"] = "true"
-        profile.metadata["last_warmed_up_at"] = datetime.datetime.now(
-            datetime.UTC
-        ).isoformat()
+        profile.metadata["last_warmed_up_at"] = datetime.datetime.now(datetime.UTC).isoformat()
         if metadata:
             profile.metadata.update(metadata)
         ProfileManager.save(profile, filepath=filepath, password=password)

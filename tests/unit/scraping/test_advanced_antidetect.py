@@ -6,20 +6,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from browser_stealth.exceptions import OptionalDependencyError
-from browser_stealth.launchers.camoufox import launch_camoufox
 from browser_stealth.antidetect import (
     _get_antidetect_js,
     get_browser_launch_args,
     get_client_hints,
 )
+from browser_stealth.exceptions import OptionalDependencyError
+from browser_stealth.launchers.camoufox import launch_camoufox
 
 
 def test_antidetect_deterministic_canvas_seed() -> None:
     """Скрипт антидетекта использует детерминированный сид, а не Math.random."""
-    js_default = _get_antidetect_js(
-        "Vendor", "Renderer", 8, 8, session_seed="sess_abc123"
-    )
+    js_default = _get_antidetect_js("Vendor", "Renderer", 8, 8, session_seed="sess_abc123")
     assert "Math.random" not in js_default
     # Проверяем наличие LCG/детерминированного алгоритма шума
     assert "sess_abc123" in js_default or "hash" in js_default or "seed" in js_default

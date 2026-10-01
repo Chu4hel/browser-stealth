@@ -50,9 +50,7 @@ def assert_extraction_complete(
     if required_keys:
         for key in required_keys:
             if key not in data:
-                raise AssertionError(
-                    f"Отсутствует обязательный ключ: {key!r} в {data!r}"
-                )
+                raise AssertionError(f"Отсутствует обязательный ключ: {key!r} в {data!r}")
 
     # Проверка значений
     for key, val in data.items():
@@ -91,8 +89,7 @@ def assert_valid_url(
 
     if parsed.scheme.lower() not in allowed_schemes:
         raise AssertionError(
-            f"Недопустимая схема URL '{parsed.scheme}': {url!r}. "
-            f"Ожидались схемы: {allowed_schemes}"
+            f"Недопустимая схема URL '{parsed.scheme}': {url!r}. Ожидались схемы: {allowed_schemes}"
         )
 
     if require_netloc and not parsed.netloc:

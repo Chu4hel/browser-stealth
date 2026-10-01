@@ -8,10 +8,13 @@ from browser_stealth.proxy.parser import parse_proxy
 try:
     from chutils.secret_manager import SecretManager
 except ImportError:
+
     class SecretManager:  # type: ignore[no-redef]
         """Легковесный fallback для SecretManager через keyring."""
 
-        def __init__(self, service_name: str = "browser_stealth_proxy", auto_mask_logs: bool = True) -> None:
+        def __init__(
+            self, service_name: str = "browser_stealth_proxy", auto_mask_logs: bool = True
+        ) -> None:
             self.service_name = service_name
 
         def get_secret(self, key: str) -> str | None:
@@ -37,6 +40,7 @@ except ImportError:
                 keyring.delete_password(self.service_name, key)
             except Exception:
                 pass
+
 
 logger = logging.getLogger("browser_stealth.proxy.storage")
 
@@ -83,7 +87,9 @@ class KeyringProxyStorage:
         Returns:
             Строка ключа с префиксом хранилища.
         """
-        clean = "".join(c for c in profile_name if c.isalnum() or c in ("-", "_")).strip() or "default"
+        clean = (
+            "".join(c for c in profile_name if c.isalnum() or c in ("-", "_")).strip() or "default"
+        )
         return f"{self.key_prefix}{clean}"
 
     def get_proxy(self, profile_name: str) -> str | None:

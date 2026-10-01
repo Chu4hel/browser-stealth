@@ -26,9 +26,7 @@ async def export_playwright_profile(context: Any) -> BrowserProfile:
     try:
         storage_state = await context.storage_state()
     except AttributeError:
-        raise OptionalDependencyError(
-            "Переданный объект не является Playwright BrowserContext"
-        )
+        raise OptionalDependencyError("Переданный объект не является Playwright BrowserContext")
 
     cookies_list: list[CookieData] = []
     for c in storage_state.get("cookies", []):
@@ -102,8 +100,6 @@ async def import_playwright_profile(context: Any, profile: BrowserProfile) -> No
                         {"key": k, "val": v},
                     )
             except Exception as e:
-                logger.warning(
-                    "Не удалось применить localStorage для origin %s: %s", origin, e
-                )
+                logger.warning("Не удалось применить localStorage для origin %s: %s", origin, e)
             finally:
                 await page.close()

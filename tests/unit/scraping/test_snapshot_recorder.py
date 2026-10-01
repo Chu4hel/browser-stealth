@@ -45,15 +45,11 @@ def test_use_html_snapshot_context_manager(tmp_path: Path) -> None:
         assert isinstance(tab, MockNodriverTab)
 
     # 3. Mock Playwright
-    with use_html_snapshot(
-        "sample", snapshot_dir=tmp_path, as_mock="playwright"
-    ) as page:
+    with use_html_snapshot("sample", snapshot_dir=tmp_path, as_mock="playwright") as page:
         assert isinstance(page, MockPlaywrightPage)
 
     # 4. Mock Selenium
-    with use_html_snapshot(
-        "sample", snapshot_dir=tmp_path, as_mock="selenium"
-    ) as driver:
+    with use_html_snapshot("sample", snapshot_dir=tmp_path, as_mock="selenium") as driver:
         assert isinstance(driver, MockSeleniumDriver)
 
 
@@ -67,17 +63,13 @@ def test_use_html_snapshot_with_fetcher(tmp_path: Path) -> None:
         return "<span>Dynamic Data</span>"
 
     # При первом вызове снапшота нет, вызывается fetcher и сохраняет
-    with use_html_snapshot(
-        "dynamic_card", snapshot_dir=tmp_path, fetcher=fetch_page
-    ) as html:
+    with use_html_snapshot("dynamic_card", snapshot_dir=tmp_path, fetcher=fetch_page) as html:
         assert html == "<span>Dynamic Data</span>"
         assert called
 
     # При повторном вызове fetcher не должен вызываться
     called = False
-    with use_html_snapshot(
-        "dynamic_card", snapshot_dir=tmp_path, fetcher=fetch_page
-    ) as html:
+    with use_html_snapshot("dynamic_card", snapshot_dir=tmp_path, fetcher=fetch_page) as html:
         assert html == "<span>Dynamic Data</span>"
         assert not called
 
@@ -90,9 +82,7 @@ async def test_use_html_snapshot_async_fetcher(tmp_path: Path) -> None:
         await asyncio.sleep(0.01)
         return "<p>Async Page</p>"
 
-    async with use_html_snapshot(
-        "async_card", snapshot_dir=tmp_path, fetcher=async_fetch
-    ) as html:
+    async with use_html_snapshot("async_card", snapshot_dir=tmp_path, fetcher=async_fetch) as html:
         assert html == "<p>Async Page</p>"
 
     # Проверяем, что файл сохранен

@@ -8,8 +8,10 @@ from typing import Any
 try:
     from chutils.plugins.interfaces import BrowserStealthPlugin
 except ImportError:
+
     class BrowserStealthPlugin:  # type: ignore[no-redef]
         """Fallback интерфейс BasePlugin."""
+
 
 from browser_stealth.antidetect.config import AntidetectConfig
 from browser_stealth.antidetect.core import (
@@ -53,7 +55,9 @@ class BrowserStealthPluginImpl(BrowserStealthPlugin):
         """Применяет расширенные стелс-патчи к nodriver Tab."""
         config = kwargs.get("config")
         if config is None:
-            config = AntidetectConfig(**kwargs) if kwargs else AntidetectConfig.preset_stealth_nodriver()
+            config = (
+                AntidetectConfig(**kwargs) if kwargs else AntidetectConfig.preset_stealth_nodriver()
+            )
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:

@@ -173,11 +173,7 @@ async def _detect_cf_turnstile_cdp_fallback(tab: Any) -> dict[str, Any] | None:
                 else:
                     pos = pos_res
 
-                if (
-                    pos
-                    and getattr(pos, "width", 0) >= 20
-                    and getattr(pos, "height", 0) >= 20
-                ):
+                if pos and getattr(pos, "width", 0) >= 20 and getattr(pos, "height", 0) >= 20:
                     return {
                         "found": True,
                         "solved": False,
@@ -228,9 +224,9 @@ async def detect_cf_turnstile(tab: Any) -> dict[str, Any] | None:
     try:
         raw_res = await _evaluate_js(tab, TURNSTILE_INSPECT_JS)
         if isinstance(raw_res, dict) and raw_res.get("found"):
-            if (
-                raw_res.get("width", 0) < 20 or raw_res.get("height", 0) < 20
-            ) and not raw_res.get("solved"):
+            if (raw_res.get("width", 0) < 20 or raw_res.get("height", 0) < 20) and not raw_res.get(
+                "solved"
+            ):
                 cdp_res = await _detect_cf_turnstile_cdp_fallback(tab)
                 if cdp_res:
                     return cdp_res
@@ -346,12 +342,7 @@ async def solve_cf_turnstile(
             )
             clicked = False
 
-        if (
-            info
-            and not clicked
-            and info.get("visible")
-            and info.get("interactive", True)
-        ):
+        if info and not clicked and info.get("visible") and info.get("interactive", True):
             x = float(info.get("x", 0.0))
             y = float(info.get("y", 0.0))
             width = float(info.get("width", 300.0))
@@ -382,9 +373,7 @@ async def solve_cf_turnstile(
                 await async_human_sleep(click_delay[0], click_delay[1])
 
             start_coords = (
-                (random.randint(100, 600), random.randint(100, 500))
-                if natural_hover
-                else None
+                (random.randint(100, 600), random.randint(100, 500)) if natural_hover else None
             )
 
             await _ensure_tab_focus(tab)

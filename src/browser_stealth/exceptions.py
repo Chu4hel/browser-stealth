@@ -9,6 +9,7 @@ class BrowserStealthError(Exception):
 
 try:
     from chutils.exceptions.base import OptionalDependencyError as _ChutilsOptionalDependencyError
+
     _BaseOptionalDependencyError = _ChutilsOptionalDependencyError
 except ImportError:
     _BaseOptionalDependencyError = ImportError

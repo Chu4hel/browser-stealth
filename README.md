@@ -63,6 +63,7 @@ uv add "browser-stealth[all]"         # Все компоненты
 import asyncio
 from browser_stealth import AntidetectConfig, launch_nodriver
 
+
 async def main():
     config = AntidetectConfig.preset_stealth_nodriver(
         session_seed="user_account_42",
@@ -71,6 +72,7 @@ async def main():
     page = await browser.get("https://bot.sannysoft.com")
     await asyncio.sleep(5)
     await browser.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -81,6 +83,7 @@ if __name__ == "__main__":
 ```python
 import asyncio
 from browser_stealth.humanize import async_move_mouse, async_type_text
+
 
 async def interact(tab):
     # Плавное биомеханическое перемещение мыши в координаты кнопки
@@ -96,6 +99,7 @@ import asyncio
 from playwright.async_api import async_playwright
 from browser_stealth import AntidetectConfig, apply_antidetect_playwright
 
+
 async def main():
     config = AntidetectConfig.preset_aggressive(
         webgl_vendor="Google Inc. (NVIDIA)",
@@ -108,6 +112,7 @@ async def main():
         page = await context.new_page()
         await page.goto("https://nowecure.com")
         await browser.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

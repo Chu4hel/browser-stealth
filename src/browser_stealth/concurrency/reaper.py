@@ -114,9 +114,7 @@ class IdleReaperConfig(BaseModel):
                 if raw_s2z is not None:
                     data["scale_to_zero_seconds"] = float(raw_s2z)
 
-                raw_interval = get_config_value(
-                    section, "check_interval_seconds", fallback=None
-                )
+                raw_interval = get_config_value(section, "check_interval_seconds", fallback=None)
                 if raw_interval is not None:
                     data["check_interval_seconds"] = float(raw_interval)
 
@@ -185,9 +183,7 @@ class IdleBrowserReaper(Generic[T]):
         if enabled is not None:
             overrides["enabled"] = enabled
 
-        self._config = (
-            base_config.model_copy(update=overrides) if overrides else base_config
-        )
+        self._config = base_config.model_copy(update=overrides) if overrides else base_config
         self._task: asyncio.Task[None] | None = None
 
     @classmethod
@@ -215,9 +211,7 @@ class IdleBrowserReaper(Generic[T]):
         Returns:
             Инициализированный экземпляр IdleBrowserReaper.
         """
-        cfg = config or IdleReaperConfig.from_settings(
-            section=config_section, **overrides
-        )
+        cfg = config or IdleReaperConfig.from_settings(section=config_section, **overrides)
         return cls(
             close_worker_fn=close_worker_fn,
             is_worker_busy_fn=is_worker_busy_fn,
@@ -395,9 +389,7 @@ class IdleBrowserReaper(Generic[T]):
             except asyncio.CancelledError:
                 break
             except Exception as exc:
-                logger.error(
-                    "Ошибка в фоновом цикле очистки простаивающих браузеров: %s", exc
-                )
+                logger.error("Ошибка в фоновом цикле очистки простаивающих браузеров: %s", exc)
 
 
 IdleReaper = IdleBrowserReaper

@@ -221,13 +221,9 @@ def apply_antidetect_selenium(
         )
     )
     if hasattr(driver, "execute_cdp_cmd"):
-        driver.execute_cdp_cmd(
-            "Page.addScriptToEvaluateOnNewDocument", {"source": script}
-        )
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": script})
         if user_agent:
-            driver.execute_cdp_cmd(
-                "Emulation.setUserAgentOverride", {"userAgent": user_agent}
-            )
+            driver.execute_cdp_cmd("Emulation.setUserAgentOverride", {"userAgent": user_agent})
         if config is not None and config.screen_width and config.screen_height:
             try:
                 driver.execute_cdp_cmd(
@@ -403,7 +399,6 @@ def get_browser_launch_args(*, no_sandbox: bool = False) -> list[str]:
     return args
 
 
-
 async def _extract_clearance_cookies_async(target: Any) -> dict[str, Any]:
     """Асинхронное извлечение кук и user-agent из Playwright / Nodriver."""
     cookies_dict: dict[str, str] = {}
@@ -502,9 +497,7 @@ def extract_clearance_cookies(target: Any) -> Any:
     send_method = getattr(target, "send", None)
     context_attr = getattr(target, "context", None)
     cookies_method = (
-        getattr(context_attr, "cookies", None)
-        if context_attr
-        else getattr(target, "cookies", None)
+        getattr(context_attr, "cookies", None) if context_attr else getattr(target, "cookies", None)
     )
 
     is_async = (callable(send_method) and inspect.iscoroutinefunction(send_method)) or (

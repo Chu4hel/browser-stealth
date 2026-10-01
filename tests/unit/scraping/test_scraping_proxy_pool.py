@@ -151,13 +151,9 @@ def test_check_proxy_failure() -> None:
 async def test_check_proxy_async() -> None:
     """Проверяет асинхронную проверку прокси."""
     proxy = ProxyConfig(host="async.proxy", port=8080, protocol="http")
-    mock_res = ProxyHealthResult(
-        is_alive=True, latency_ms=12.5, external_ip="203.0.113.5"
-    )
+    mock_res = ProxyHealthResult(is_alive=True, latency_ms=12.5, external_ip="203.0.113.5")
 
-    with patch(
-        "browser_stealth.proxy.pool.check_proxy", return_value=mock_res
-    ) as mock_sync:
+    with patch("browser_stealth.proxy.pool.check_proxy", return_value=mock_res) as mock_sync:
         res = await check_proxy_async(proxy)
         assert res.is_alive
         assert res.external_ip == "203.0.113.5"

@@ -78,9 +78,7 @@ async def test_is_cf_turnstile_solved_by_cookie() -> None:
 async def test_solve_cf_turnstile_already_solved() -> None:
     """Проверка решения капчи, если она уже решена в начале вызова."""
     mock_tab = MagicMock()
-    mock_tab.evaluate = AsyncMock(
-        return_value={"found": True, "solved": True, "token": "0.token"}
-    )
+    mock_tab.evaluate = AsyncMock(return_value={"found": True, "solved": True, "token": "0.token"})
 
     with patch("browser_stealth.humanize.turnstile.async_click") as mock_click:
         result = await solve_cf_turnstile(mock_tab, timeout=2.0)
@@ -245,9 +243,7 @@ async def test_solve_cf_turnstile_waits_for_interactive() -> None:
         interactions["clicks"] += 1
 
     with (
-        patch(
-            "browser_stealth.humanize.turnstile.async_click", side_effect=mock_click
-        ),
+        patch("browser_stealth.humanize.turnstile.async_click", side_effect=mock_click),
         patch("browser_stealth.humanize.turnstile.async_human_sleep", AsyncMock()),
     ):
         result = await solve_cf_turnstile(
@@ -297,9 +293,7 @@ async def test_solve_cf_turnstile_box_model_fallback() -> None:
         )
 
     with (
-        patch(
-            "browser_stealth.humanize.turnstile.async_click", side_effect=mock_click
-        ),
+        patch("browser_stealth.humanize.turnstile.async_click", side_effect=mock_click),
         patch("browser_stealth.humanize.turnstile.async_human_sleep", AsyncMock()),
     ):
         result = await solve_cf_turnstile(
@@ -341,9 +335,7 @@ async def test_solve_cf_turnstile_custom_click_offset() -> None:
         )
 
     with (
-        patch(
-            "browser_stealth.humanize.turnstile.async_click", side_effect=mock_click
-        ),
+        patch("browser_stealth.humanize.turnstile.async_click", side_effect=mock_click),
         patch("browser_stealth.humanize.turnstile.async_human_sleep", AsyncMock()),
     ):
         result = await solve_cf_turnstile(
@@ -388,9 +380,7 @@ async def test_solve_cf_turnstile_compact_widget() -> None:
         )
 
     with (
-        patch(
-            "browser_stealth.humanize.turnstile.async_click", side_effect=mock_click
-        ),
+        patch("browser_stealth.humanize.turnstile.async_click", side_effect=mock_click),
         patch("browser_stealth.humanize.turnstile.async_human_sleep", AsyncMock()),
     ):
         result = await solve_cf_turnstile(
@@ -450,9 +440,7 @@ async def test_solve_cf_turnstile_retry_on_expired() -> None:
         step["clicks"] += 1
 
     with (
-        patch(
-            "browser_stealth.humanize.turnstile.async_click", side_effect=mock_click
-        ),
+        patch("browser_stealth.humanize.turnstile.async_click", side_effect=mock_click),
         patch("browser_stealth.humanize.turnstile.async_human_sleep", AsyncMock()),
     ):
         result = await solve_cf_turnstile(

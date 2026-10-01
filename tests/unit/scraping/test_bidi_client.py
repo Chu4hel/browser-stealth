@@ -319,10 +319,7 @@ def test_extract_bidi_url() -> None:
         def __init__(self) -> None:
             self.capabilities = {"goog:chromeOptions": {"debuggerAddress": "localhost:9222"}}
 
-    assert (
-        extract_bidi_url(MockChromeDriver())
-        == "ws://localhost:9222/devtools/browser"
-    )
+    assert extract_bidi_url(MockChromeDriver()) == "ws://localhost:9222/devtools/browser"
 
     # Неподдерживаемый объект
     with pytest.raises(ValueError, match="Не удалось извлечь WebDriver BiDi WebSocket URL"):

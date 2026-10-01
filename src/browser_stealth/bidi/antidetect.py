@@ -72,5 +72,7 @@ async def apply_antidetect_bidi(
             f"Ожидался BiDiSession или BiDiClient, получен {type(session_or_client).__name__}"
         )
 
-    logger.debug("WebDriver BiDi antidetect preload script успешно зарегистрирован (id=%s)", script_id)
+    logger.debug(
+        "WebDriver BiDi antidetect preload script успешно зарегистрирован (id=%s)", script_id
+    )
     return script_id

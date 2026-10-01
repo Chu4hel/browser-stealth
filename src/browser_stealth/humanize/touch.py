@@ -214,12 +214,8 @@ class TouchGestureGenerator:
             rx = self.default_radius * 1.0
             ry = self.default_radius * 1.1
 
-            p1 = TouchPoint(
-                x=f1_x, y=f1_y, radius_x=rx, radius_y=ry, force=force, delay=0.01
-            )
-            p2 = TouchPoint(
-                x=f2_x, y=f2_y, radius_x=rx, radius_y=ry, force=force, delay=0.01
-            )
+            p1 = TouchPoint(x=f1_x, y=f1_y, radius_x=rx, radius_y=ry, force=force, delay=0.01)
+            p2 = TouchPoint(x=f2_x, y=f2_y, radius_x=rx, radius_y=ry, force=force, delay=0.01)
             result.append((p1, p2))
 
         return result
@@ -262,14 +258,10 @@ async def async_touch_tap(
                 id=1,
             )
             await page.send(
-                cdp_input.dispatch_touch_event(
-                    type_="touchStart", touch_points=[cdp_pt]
-                )
+                cdp_input.dispatch_touch_event(type_="touchStart", touch_points=[cdp_pt])
             )
             await asyncio.sleep(p0.delay)
-            await page.send(
-                cdp_input.dispatch_touch_event(type_="touchEnd", touch_points=[])
-            )
+            await page.send(cdp_input.dispatch_touch_event(type_="touchEnd", touch_points=[]))
         elif hasattr(page, "touchscreen") and hasattr(page.touchscreen, "tap"):
             await page.touchscreen.tap(x, y)
         elif _is_playwright(page):
@@ -321,16 +313,12 @@ async def async_touch_swipe(
                     id=1,
                 )
                 await page.send(
-                    cdp_input.dispatch_touch_event(
-                        type_=event_type, touch_points=[cdp_pt]
-                    )
+                    cdp_input.dispatch_touch_event(type_=event_type, touch_points=[cdp_pt])
                 )
                 if pt.delay > 0:
                     await asyncio.sleep(pt.delay)
 
-            await page.send(
-                cdp_input.dispatch_touch_event(type_="touchEnd", touch_points=[])
-            )
+            await page.send(cdp_input.dispatch_touch_event(type_="touchEnd", touch_points=[]))
         elif _is_playwright(page) or hasattr(page, "mouse"):
             await page.mouse.move(points[0].x, points[0].y)
             await page.mouse.down()

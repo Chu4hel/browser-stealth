@@ -63,9 +63,7 @@ async def test_async_move_mouse_nodriver() -> None:
     tab._is_nodriver = True
     tab.send = AsyncMock()
 
-    await async_move_mouse(
-        tab, x=200, y=300, start=(0, 0), steps=10, delay_between_steps=0.001
-    )
+    await async_move_mouse(tab, x=200, y=300, start=(0, 0), steps=10, delay_between_steps=0.001)
 
     assert tab.send.call_count == 10
     # Проверяем, что последний вызов отправляет событие на координаты 200, 300
@@ -110,7 +108,6 @@ async def test_async_move_mouse_nodriver_wind_mouse_alias() -> None:
     assert last_call[1]["type_"] == "mouseMoved"
 
 
-
 @pytest.mark.asyncio
 async def test_async_scroll_to_nodriver() -> None:
     """Проверяет имитацию скроллинга с nodriver."""
@@ -140,9 +137,7 @@ async def test_async_type_text_nodriver() -> None:
     mock_element._is_nodriver = True
     tab.find.return_value = mock_element
 
-    await async_type_text(
-        tab, selector="#username", text="hello", error_rate=0.0, speed_wpm=300.0
-    )
+    await async_type_text(tab, selector="#username", text="hello", error_rate=0.0, speed_wpm=300.0)
 
     # Проверяем поиск элемента и вызов фокуса
     tab.find.assert_called_once_with("#username")
@@ -183,16 +178,12 @@ async def test_async_type_text_nodriver_paste_threshold(mocker: MockerFixture) -
     mock_element.focus.assert_called_once()
 
     # Должен быть вызван send с insert_text
-    insert_calls = [
-        c[0][0] for c in tab.send.call_args_list if c[0][0][0] == "insert_text"
-    ]
+    insert_calls = [c[0][0] for c in tab.send.call_args_list if c[0][0][0] == "insert_text"]
     assert len(insert_calls) == 1
     assert insert_calls[0][1]["text"] == long_text
 
     # dispatch_key_event не должен вызываться для посимвольного ввода
-    key_events = [
-        c[0][0] for c in tab.send.call_args_list if c[0][0][0] == "dispatch_key_event"
-    ]
+    key_events = [c[0][0] for c in tab.send.call_args_list if c[0][0][0] == "dispatch_key_event"]
     assert len(key_events) == 0
     assert sleep_mock.call_count >= 2
 
@@ -296,17 +287,13 @@ async def test_async_click_nodriver_hold_time(mocker: MockerFixture) -> None:
     # Должны быть отправлены события mousePressed и mouseReleased
     assert tab.send.call_count >= 2
     sent_types = [
-        c[0][0][1]["type_"]
-        for c in tab.send.call_args_list
-        if c[0][0][0] == "dispatch_mouse_event"
+        c[0][0][1]["type_"] for c in tab.send.call_args_list if c[0][0][0] == "dispatch_mouse_event"
     ]
     assert "mousePressed" in sent_types
     assert "mouseReleased" in sent_types
 
     # Проверяем, что был вызван asyncio.sleep с задержкой в диапазоне hold_time
-    sleep_calls = [
-        c[0][0] for c in sleep_mock.call_args_list if isinstance(c[0][0], (int, float))
-    ]
+    sleep_calls = [c[0][0] for c in sleep_mock.call_args_list if isinstance(c[0][0], (int, float))]
     hold_sleeps = [s for s in sleep_calls if 0.069 <= s <= 0.111]
     assert len(hold_sleeps) >= 1
 
@@ -335,9 +322,7 @@ async def test_async_type_text_key_hold_time(mocker: MockerFixture) -> None:
     )
 
     # Проверяем, что был sleep в диапазоне key_hold_time между keyDown и keyUp
-    sleep_calls = [
-        c[0][0] for c in sleep_mock.call_args_list if isinstance(c[0][0], (int, float))
-    ]
+    sleep_calls = [c[0][0] for c in sleep_mock.call_args_list if isinstance(c[0][0], (int, float))]
     key_hold_sleeps = [s for s in sleep_calls if 0.049 <= s <= 0.081]
     assert len(key_hold_sleeps) >= 1
 
@@ -371,9 +356,7 @@ async def test_async_type_text_nodriver_paste_dom_setter() -> None:
     assert "desc.set.call" in eval_call_arg
     assert "dispatchEvent" in eval_call_arg
     # fallback send(insert_text) не должен вызываться при успешном DOM evaluate
-    insert_calls = [
-        c[0][0] for c in tab.send.call_args_list if c[0][0][0] == "insert_text"
-    ]
+    insert_calls = [c[0][0] for c in tab.send.call_args_list if c[0][0][0] == "insert_text"]
     assert len(insert_calls) == 0
 
 
@@ -454,9 +437,7 @@ async def test_resolve_async_element_coordinates_nodriver_bounding_box() -> None
 
     tab = AsyncMock()
     tab._is_nodriver = True
-    tab.evaluate = AsyncMock(
-        return_value={"x": 100.0, "y": 200.0, "width": 50.0, "height": 30.0}
-    )
+    tab.evaluate = AsyncMock(return_value={"x": 100.0, "y": 200.0, "width": 50.0, "height": 30.0})
     tab.find = AsyncMock()
 
     coords = await _resolve_async_element_coordinates(tab, "#complex > .btn:first-child")
@@ -509,6 +490,7 @@ async def test_resolve_async_element_coordinates_nodriver_fallback() -> None:
 async def test_async_move_mouse_timeout() -> None:
     """Проверяет выброс TimeoutError при превышении таймаута в async_move_mouse."""
     import asyncio
+
     tab = AsyncMock()
     tab._is_nodriver = True
 
@@ -558,6 +540,3 @@ async def test_async_type_text_timeout() -> None:
 
     with pytest.raises((TimeoutError, asyncio.TimeoutError)):
         await async_type_text(tab, selector="#input", text="hello", timeout=0.02)
-
-
-

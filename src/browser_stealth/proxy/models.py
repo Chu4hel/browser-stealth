@@ -11,9 +11,7 @@ from pydantic import BaseModel, Field
 class ProxyConfig(BaseModel):
     """Конфигурация прокси-сервера с поддержкой аутентификации."""
 
-    protocol: Literal["http", "https", "socks5", "socks4", "socks5h", "socks4a"] = (
-        "http"
-    )
+    protocol: Literal["http", "https", "socks5", "socks4", "socks5h", "socks4a"] = "http"
     host: str
     port: int = Field(ge=1, le=65535)
     username: str | None = None

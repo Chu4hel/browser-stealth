@@ -145,6 +145,7 @@ async def test_async_touch_tap_nodriver() -> None:
     mock_nodriver.cdp = mock_cdp
 
     import sys
+
     sys.modules["nodriver"] = mock_nodriver
     sys.modules["nodriver.cdp"] = mock_cdp
     sys.modules["nodriver.cdp.input_"] = mock_input
@@ -193,6 +194,7 @@ async def test_async_touch_swipe_nodriver() -> None:
     mock_nodriver.cdp = mock_cdp
 
     import sys
+
     sys.modules["nodriver"] = mock_nodriver
     sys.modules["nodriver.cdp"] = mock_cdp
     sys.modules["nodriver.cdp.input_"] = mock_input

@@ -493,4 +493,3 @@ class AntidetectConfig(BaseModel):
         from .core import apply_antidetect_selenium
 
         apply_antidetect_selenium(driver, config=self)
-

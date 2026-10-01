@@ -256,9 +256,7 @@ def _generate_scroll_points(
     return points
 
 
-async def _resolve_async_element_coordinates(
-    page: Any, selector: str
-) -> tuple[int, int]:
+async def _resolve_async_element_coordinates(page: Any, selector: str) -> tuple[int, int]:
     """Определяет координаты клика внутри элемента для Playwright или nodriver."""
     if _is_nodriver(page):
         _ensure_nodriver()
@@ -307,11 +305,7 @@ async def _resolve_async_element_coordinates(
         return (100, 100)
     elif _is_playwright(page):
         _ensure_playwright()
-        elem = (
-            await page.query_selector(selector)
-            if hasattr(page, "query_selector")
-            else None
-        )
+        elem = await page.query_selector(selector) if hasattr(page, "query_selector") else None
         if elem is not None:
             box = await elem.bounding_box()
             if box:
@@ -491,22 +485,35 @@ async def _async_type_nodriver(
         elif action.action == "key":
             k = action.char
             vk = {
-                "ArrowLeft": 37, "ArrowUp": 38, "ArrowRight": 39,
-                "ArrowDown": 40, "Backspace": 8, "Enter": 13,
+                "ArrowLeft": 37,
+                "ArrowUp": 38,
+                "ArrowRight": 39,
+                "ArrowDown": 40,
+                "Backspace": 8,
+                "Enter": 13,
             }.get(k, 0)
-            extra: dict[str, Any] = {"commands": ["deleteContentBackward"]} if k == "Backspace" else {}
+            extra: dict[str, Any] = (
+                {"commands": ["deleteContentBackward"]} if k == "Backspace" else {}
+            )
             await page.send(
                 cdp_input.dispatch_key_event(
-                    type_="rawKeyDown", key=k, code=k,
-                    windows_virtual_key_code=vk, native_virtual_key_code=vk, **extra
+                    type_="rawKeyDown",
+                    key=k,
+                    code=k,
+                    windows_virtual_key_code=vk,
+                    native_virtual_key_code=vk,
+                    **extra,
                 )
             )
             if key_hold_time and key_hold_time[1] > 0:
                 await asyncio.sleep(random.uniform(*key_hold_time))
             await page.send(
                 cdp_input.dispatch_key_event(
-                    type_="keyUp", key=k, code=k,
-                    windows_virtual_key_code=vk, native_virtual_key_code=vk
+                    type_="keyUp",
+                    key=k,
+                    code=k,
+                    windows_virtual_key_code=vk,
+                    native_virtual_key_code=vk,
                 )
             )
 
@@ -569,7 +576,6 @@ async def _async_type_playwright(
     await _dom_safe_heal(page, selector, text)
 
 
-
 def click(
     driver: Any,
     selector: str | None = None,
@@ -601,9 +607,7 @@ def click(
 
     if target_x is None or target_y is None:
         if selector is None:
-            raise ValueError(
-                "Необходимо указать координаты (x, y) или CSS-селектор selector."
-            )
+            raise ValueError("Необходимо указать координаты (x, y) или CSS-селектор selector.")
         element = driver.find_element(By.CSS_SELECTOR, selector)
         loc = element.location
         size = element.size
@@ -614,9 +618,7 @@ def click(
     time.sleep(random.uniform(0.04, 0.12))
 
     hold_delay = (
-        random.uniform(*hold_time)
-        if hold_time and hold_time[1] > 0
-        else random.uniform(0.04, 0.09)
+        random.uniform(*hold_time) if hold_time and hold_time[1] > 0 else random.uniform(0.04, 0.09)
     )
     actions = ActionChains(driver)
     actions.click_and_hold().pause(hold_delay).release().perform()

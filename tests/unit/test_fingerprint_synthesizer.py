@@ -11,13 +11,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pytest_mock import MockerFixture
 
+from browser_stealth.antidetect.config import AntidetectConfig
 from browser_stealth.exceptions import OptionalDependencyError
 from browser_stealth.fingerprint.external import BrowserForgeProvider
 from browser_stealth.fingerprint.models import (
     FingerprintProfile,
 )
 from browser_stealth.fingerprint.synthesizer import FingerprintSynthesizer
-from browser_stealth.antidetect.config import AntidetectConfig
 
 
 def test_procedural_synthesizer_determinism() -> None:
@@ -72,9 +72,7 @@ def test_procedural_synthesizer_hardware_consistency() -> None:
         fp = synthesizer.synthesize(f"consistency_test_seed_{i}")
 
         # 1. Валидный синтаксис ANGLE Direct3D11
-        assert angle_regex.match(fp.webgl.renderer), (
-            f"Невалидный ANGLE: {fp.webgl.renderer}"
-        )
+        assert angle_regex.match(fp.webgl.renderer), f"Невалидный ANGLE: {fp.webgl.renderer}"
 
         # 2. Согласованность экрана и панели задач
         assert fp.screen.avail_height < fp.screen.height, (
@@ -84,16 +82,9 @@ def test_procedural_synthesizer_hardware_consistency() -> None:
         assert fp.screen.device_pixel_ratio in (1.0, 1.25, 1.5, 1.75, 2.0)
 
         # 3. Согласованность High-End GPU с памятью и процессором
-        if any(
-            top_gpu in fp.webgl.renderer
-            for top_gpu in ("RTX 4090", "RTX 4080", "RX 7900 XTX")
-        ):
-            assert fp.hardware.memory_gb >= 16, (
-                "Топовый GPU не может работать с < 16 ГБ RAM"
-            )
-            assert fp.hardware.concurrency >= 12, (
-                "Топовый GPU не может работать с < 12 ядрами CPU"
-            )
+        if any(top_gpu in fp.webgl.renderer for top_gpu in ("RTX 4090", "RTX 4080", "RX 7900 XTX")):
+            assert fp.hardware.memory_gb >= 16, "Топовый GPU не может работать с < 16 ГБ RAM"
+            assert fp.hardware.concurrency >= 12, "Топовый GPU не может работать с < 12 ядрами CPU"
 
         # 4. Согласованность встроенной графики
         if "Iris" in fp.webgl.renderer or "UHD Graphics" in fp.webgl.renderer:
@@ -169,9 +160,7 @@ def test_browserforge_mock_provider(mocker: MockerFixture) -> None:
     """Проверяет адаптер BrowserForgeProvider при установленной библиотеке."""
     mock_fg_instance = MagicMock()
     mock_fp = MagicMock()
-    mock_fp.navigator.userAgent = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-    )
+    mock_fp.navigator.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
     mock_fp.navigator.hardwareConcurrency = 16
     mock_fp.navigator.deviceMemory = 32
     mock_fp.screen.width = 2560
@@ -181,7 +170,9 @@ def test_browserforge_mock_provider(mocker: MockerFixture) -> None:
     mock_fp.screen.colorDepth = 24
     mock_fp.screen.devicePixelRatio = 1.25
     mock_fp.videoCard.vendor = "Google Inc. (NVIDIA)"
-    mock_fp.videoCard.renderer = "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Direct3D11 vs_5_0 ps_5_0, D3D11-31.0.15.5186)"
+    mock_fp.videoCard.renderer = (
+        "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Direct3D11 vs_5_0 ps_5_0, D3D11-31.0.15.5186)"
+    )
     mock_fp.headers = {"sec-ch-ua-platform": '"Windows"'}
 
     mock_fg_instance.generate.return_value = mock_fp
@@ -305,4 +296,3 @@ def test_synthesizer_auto_mode_fallback_on_browserforge_error(
 
     assert result.source == "procedural"
     assert result.seed == "user_seed_456"
-

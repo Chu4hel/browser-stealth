@@ -120,7 +120,9 @@ class SmartProxyResolver:
 
         candidates: list[str] = []
 
-        def _add_candidate(proto: str, host: str, port: int, user: str | None, pwd: str | None) -> None:
+        def _add_candidate(
+            proto: str, host: str, port: int, user: str | None, pwd: str | None
+        ) -> None:
             if not host or port <= 0 or port > 65535:
                 return
             clean_host = host.strip("[]")
@@ -293,7 +295,11 @@ class SmartProxyResolver:
                 return False
 
             line_str = resp_line.decode("utf-8", errors="ignore")
-            if " 200 " in line_str or line_str.startswith("HTTP/1.1 200") or line_str.startswith("HTTP/1.0 200"):
+            if (
+                " 200 " in line_str
+                or line_str.startswith("HTTP/1.1 200")
+                or line_str.startswith("HTTP/1.0 200")
+            ):
                 return True
 
             if " 407 " in line_str:
@@ -379,10 +385,7 @@ class SmartProxyResolver:
             # 2. Попытка SOCKS5 CONNECT к www.google.com:443
             domain = b"www.google.com"
             connect_req = (
-                b"\x05\x01\x00\x03"
-                + bytes([len(domain)])
-                + domain
-                + (443).to_bytes(2, "big")
+                b"\x05\x01\x00\x03" + bytes([len(domain)]) + domain + (443).to_bytes(2, "big")
             )
             writer.write(connect_req)
             await writer.drain()

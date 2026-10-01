@@ -97,9 +97,7 @@ class FingerprintSynthesizer:
         Returns:
             Экземпляр FingerprintProfile с физически валидным отпечатком.
         """
-        return cls(mode="procedural", os_target=os_target, locale=locale).synthesize(
-            seed
-        )
+        return cls(mode="procedural", os_target=os_target, locale=locale).synthesize(seed)
 
     def get_or_create(
         self,
@@ -117,9 +115,7 @@ class FingerprintSynthesizer:
         """
         dir_path = Path(storage_dir)
         ensure_dir(dir_path)
-        safe_seed = "".join(
-            c if c.isalnum() or c in ("-", "_") else "_" for c in str(seed)
-        )
+        safe_seed = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in str(seed))
         file_path = dir_path / f"{safe_seed}.json"
 
         if file_path.is_file():

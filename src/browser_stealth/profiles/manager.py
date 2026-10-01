@@ -206,10 +206,7 @@ class ProfileManager:
             if is_mock:
                 if getattr(browser_obj, "_is_nodriver", False) is True:
                     profile = await cls.export_from_nodriver(browser_obj)
-                elif (
-                    "context" in browser_obj.__dict__
-                    or "storage_state" in browser_obj.__dict__
-                ):
+                elif "context" in browser_obj.__dict__ or "storage_state" in browser_obj.__dict__:
                     context = getattr(browser_obj, "context", browser_obj)
                     profile = await cls.export_from_playwright(context)
                 else:
@@ -228,9 +225,7 @@ class ProfileManager:
                     profile = await cls.export_from_playwright(context)
 
         profile.metadata["warmed_up"] = "true"
-        profile.metadata["last_warmed_up_at"] = datetime.datetime.now(
-            datetime.UTC
-        ).isoformat()
+        profile.metadata["last_warmed_up_at"] = datetime.datetime.now(datetime.UTC).isoformat()
         if metadata:
             profile.metadata.update(metadata)
 

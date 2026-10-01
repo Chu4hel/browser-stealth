@@ -12,9 +12,7 @@ from browser_stealth.profiles.models import CookieData
 async def test_profile_manager_playwright():
     context_mock = AsyncMock()
     context_mock.storage_state.return_value = {
-        "cookies": [
-            {"name": "auth", "value": "secret", "domain": "test.com", "path": "/"}
-        ],
+        "cookies": [{"name": "auth", "value": "secret", "domain": "test.com", "path": "/"}],
         "origins": [],
     }
 
@@ -30,11 +28,7 @@ async def test_profile_manager_playwright():
 async def test_profile_manager_nodriver():
     tab_mock = AsyncMock()
     tab_mock.send.side_effect = [
-        {
-            "cookies": [
-                {"name": "nd", "value": "val", "domain": "test.com", "path": "/"}
-            ]
-        },
+        {"cookies": [{"name": "nd", "value": "val", "domain": "test.com", "path": "/"}]},
         None,
         None,
     ]
@@ -85,9 +79,7 @@ async def test_save_profile_after_warmup(tmp_path):
     context_mock = AsyncMock()
     page_mock.context = context_mock
     context_mock.storage_state.return_value = {
-        "cookies": [
-            {"name": "pw_warm", "value": "1", "domain": "example.com", "path": "/"}
-        ],
+        "cookies": [{"name": "pw_warm", "value": "1", "domain": "example.com", "path": "/"}],
         "origins": [],
     }
 

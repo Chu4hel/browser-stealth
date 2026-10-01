@@ -46,9 +46,7 @@ class ScreenFingerprint(BaseModel):
     device_pixel_ratio: float = Field(
         default=1.0, description="Масштабирование дисплея (window.devicePixelRatio)."
     )
-    color_depth: int = Field(
-        default=24, description="Глубина цвета дисплея (screen.colorDepth)."
-    )
+    color_depth: int = Field(default=24, description="Глубина цвета дисплея (screen.colorDepth).")
 
 
 class HardwareFingerprint(BaseModel):
@@ -75,12 +73,8 @@ class AudioFingerprint(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    channel_count: int = Field(
-        default=2, description="Количество аудиоканалов (стерео)."
-    )
-    sample_rate: int = Field(
-        default=44100, description="Частота дискретизации аудио (Гц)."
-    )
+    channel_count: int = Field(default=2, description="Количество аудиоканалов (стерео).")
+    sample_rate: int = Field(default=44100, description="Частота дискретизации аудио (Гц).")
     noise_factor: float = Field(
         default=1e-7,
         description="Детерминированный субпиксельный аналоговый шум порядка 10^-7.",
@@ -92,9 +86,7 @@ class MediaDeviceItem(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    kind: str = Field(
-        description="Тип устройства: 'audioinput', 'audiooutput' или 'videoinput'."
-    )
+    kind: str = Field(description="Тип устройства: 'audioinput', 'audiooutput' или 'videoinput'.")
     label: str = Field(description="Человекочитаемое имя устройства.")
     device_id: str = Field(description="Уникальный идентификатор устройства.")
     group_id: str = Field(description="Идентификатор группы устройства.")

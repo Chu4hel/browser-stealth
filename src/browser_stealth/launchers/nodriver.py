@@ -126,7 +126,6 @@ async def launch_nodriver(
     if config.user_agent and not any(a.startswith("--user-agent=") for a in merged_args):
         merged_args.append(f"--user-agent={config.user_agent}")
 
-
     # Очистка профиля от следов падений и сброс crash flags перед запуском
     if sanitize_profile_dir and user_data_dir is not None:
         try:
@@ -177,9 +176,7 @@ async def launch_nodriver(
             try:
                 await config.apply_to_nodriver(tab)
             except Exception as exc:
-                logger.debug(
-                    f"Не удалось применить AntidetectConfig к вкладке nodriver: {exc}"
-                )
+                logger.debug(f"Не удалось применить AntidetectConfig к вкладке nodriver: {exc}")
 
     return browser
 
@@ -260,4 +257,3 @@ __all__ = [
     "sanitize_profile",
     "sanitize_profile_crash_state",
 ]
-

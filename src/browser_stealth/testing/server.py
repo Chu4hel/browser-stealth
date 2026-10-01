@@ -155,11 +155,7 @@ class LocalTestServer:
     @property
     def is_running(self) -> bool:
         """Проверяет, запущен ли сервер."""
-        return (
-            self._httpd is not None
-            and self._thread is not None
-            and self._thread.is_alive()
-        )
+        return self._httpd is not None and self._thread is not None and self._thread.is_alive()
 
     @property
     def port(self) -> int:
@@ -251,15 +247,11 @@ class LocalTestServer:
                 status = resp.status
                 resp_headers = {k: v for k, v in resp.headers.items()}
                 content = resp.read()
-                return TestResponse(
-                    status=status, headers=resp_headers, content=content
-                )
+                return TestResponse(status=status, headers=resp_headers, content=content)
         except urllib.error.HTTPError as err:
             err_headers = {k: v for k, v in err.headers.items()} if err.headers else {}
             err_content = err.read()
-            return TestResponse(
-                status=err.code, headers=err_headers, content=err_content
-            )
+            return TestResponse(status=err.code, headers=err_headers, content=err_content)
 
     def start(self) -> Self:
         """Запускает HTTP-сервер в фоновом потоке.

@@ -145,9 +145,7 @@ class LiveBrowserSession:
                 except OSError:
                     pass
         except Exception as exc:
-            logger.warning(
-                "Ошибка при принудительном завершении процесса %s: %s", proc, exc
-            )
+            logger.warning("Ошибка при принудительном завершении процесса %s: %s", proc, exc)
 
     def _remove_directory(self, path: Path) -> None:
         """Удаляет каталог с retry механизмом для файловых блокировок Windows."""
@@ -162,9 +160,7 @@ class LiveBrowserSession:
 
     def _on_lifecycle_shutdown(self) -> None:
         """Callback для аварийного завершения приложения через chutils.lifecycle."""
-        logger.warning(
-            "LiveBrowserSession: экстренная очистка сессии при shutdown приложения."
-        )
+        logger.warning("LiveBrowserSession: экстренная очистка сессии при shutdown приложения.")
         self.cleanup()
 
     def __enter__(self) -> Self:

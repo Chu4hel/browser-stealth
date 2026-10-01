@@ -183,7 +183,9 @@ class DOMActionRecorder:
                 discovered[cat].append(a.computed_selector)
 
         session_vp = raw_data.get("session_viewport")
-        viewport_obj = ViewportInfo(**session_vp) if session_vp and isinstance(session_vp, dict) else None
+        viewport_obj = (
+            ViewportInfo(**session_vp) if session_vp and isinstance(session_vp, dict) else None
+        )
 
         report = DOMActionSessionReport(
             timestamp=utc_now().isoformat(timespec="seconds"),
@@ -227,15 +229,17 @@ class DOMActionRecorder:
             )
 
         if report.checklist:
-            lines.extend([
-                "",
-                "---",
-                "",
-                "## 📋 Статус выполнения чеклиста",
-                "",
-                "| Пункт | Описание и ориентиры | Статус | Селектор элемента |",
-                "|---|---|:---:|---|",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "---",
+                    "",
+                    "## 📋 Статус выполнения чеклиста",
+                    "",
+                    "| Пункт | Описание и ориентиры | Статус | Селектор элемента |",
+                    "|---|---|:---:|---|",
+                ]
+            )
 
             for item in report.checklist:
                 if item.completed:
@@ -250,45 +254,53 @@ class DOMActionRecorder:
 
         duplicate_actions = [a for a in report.actions if a.has_duplicates]
         if duplicate_actions:
-            lines.extend([
-                "",
-                "---",
-                "",
-                "## ⚠️ Предупреждения: Обнаружены селекторы с дубликатами в DOM",
-                "",
-                "> [!WARNING]",
-                "> Следующие селекторы при клике находили более 1 элемента в дереве DOM. В SPA-приложениях это может приводить к кликам по скрытым элементам. Рекомендуется использовать `scoped_selector`!",
-                "",
-                "| Шаг | Событие | Селектор | Совпадений | Контекст контейнера | Рекомендуемый составной селектор |",
-                "|:---:|---|---|:---:|---|---|",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "---",
+                    "",
+                    "## ⚠️ Предупреждения: Обнаружены селекторы с дубликатами в DOM",
+                    "",
+                    "> [!WARNING]",
+                    "> Следующие селекторы при клике находили более 1 элемента в дереве DOM. В SPA-приложениях это может приводить к кликам по скрытым элементам. Рекомендуется использовать `scoped_selector`!",
+                    "",
+                    "| Шаг | Событие | Селектор | Совпадений | Контекст контейнера | Рекомендуемый составной селектор |",
+                    "|:---:|---|---|:---:|---|---|",
+                ]
+            )
             for da in duplicate_actions:
                 scope_str = f"`{da.container_scope}`" if da.container_scope else "—"
-                scoped_str = f"`{da.scoped_selector}`" if da.scoped_selector else f"`{da.computed_selector}`"
+                scoped_str = (
+                    f"`{da.scoped_selector}`" if da.scoped_selector else f"`{da.computed_selector}`"
+                )
                 lines.append(
                     f"| {da.action_id} | `{da.event_type}` | `{da.computed_selector}` | **{da.duplicate_count}** | {scope_str} | {scoped_str} |"
                 )
 
         if report.discovered_selectors:
-            lines.extend([
-                "",
-                "---",
-                "",
-                "## 🎯 Сводка обнаруженных селекторов по категориям",
-                "",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "---",
+                    "",
+                    "## 🎯 Сводка обнаруженных селекторов по категориям",
+                    "",
+                ]
+            )
             for cat, selectors in report.discovered_selectors.items():
                 lines.append(f"### Категория: `{cat}`")
                 for s in selectors:
                     lines.append(f"- Селектор: `{s}`")
                 lines.append("")
 
-        lines.extend([
-            "---",
-            "",
-            "## 📜 Хронология выполненных действий пользователя",
-            "",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "## 📜 Хронология выполненных действий пользователя",
+                "",
+            ]
+        )
 
         if not report.actions:
             lines.append("*Действий не зафиксировано.*")
@@ -315,7 +327,9 @@ class DOMActionRecorder:
                 if a.scoped_selector and a.scoped_selector != a.computed_selector:
                     lines.append(f"- **Составной селектор (Scoped):** `{a.scoped_selector}`")
                 if a.has_duplicates:
-                    lines.append(f"- **Внимание (Дубликаты):** ⚠️ Найдено {a.duplicate_count} совпадений в DOM на момент взаимодействия!")
+                    lines.append(
+                        f"- **Внимание (Дубликаты):** ⚠️ Найдено {a.duplicate_count} совпадений в DOM на момент взаимодействия!"
+                    )
 
                 if a.alternative_selectors:
                     alts_str = ", ".join(f"`{s}`" for s in a.alternative_selectors)

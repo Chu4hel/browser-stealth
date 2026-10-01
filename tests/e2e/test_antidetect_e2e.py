@@ -12,6 +12,7 @@ import pytest
 os.environ["NO_PROXY"] = "127.0.0.1,localhost"
 
 from chutils.http.tls_client import TLSAsyncClient, TLSSession
+
 from browser_stealth.antidetect import _get_antidetect_js
 from browser_stealth.testing.server import LocalTestServer
 
@@ -120,9 +121,7 @@ async def test_browser_to_tls_client_e2e_flow(monkeypatch: pytest.MonkeyPatch) -
         )
         mock_page = MagicMock()
         mock_page.context = mock_context
-        mock_page.evaluate = AsyncMock(
-            return_value="Mozilla/5.0 E2E-Antidetect-Browser"
-        )
+        mock_page.evaluate = AsyncMock(return_value="Mozilla/5.0 E2E-Antidetect-Browser")
 
         # 2. Инициализируем TLSAsyncClient из браузерной сессии
         client = await TLSAsyncClient.from_browser_session(
@@ -132,13 +131,9 @@ async def test_browser_to_tls_client_e2e_flow(monkeypatch: pytest.MonkeyPatch) -
         )
 
         assert client.impersonate == "chrome120"
-        assert (
-            client.default_headers.get("User-Agent")
-            == "Mozilla/5.0 E2E-Antidetect-Browser"
-        )
-        assert (
-            "cf_clearance=e2e_valid_clearance_token_xyz"
-            in client.default_headers.get("Cookie", "")
+        assert client.default_headers.get("User-Agent") == "Mozilla/5.0 E2E-Antidetect-Browser"
+        assert "cf_clearance=e2e_valid_clearance_token_xyz" in client.default_headers.get(
+            "Cookie", ""
         )
 
         # 3. Выполняем асинхронный HTTP-запрос к защищенному эндпоинту сервера
@@ -153,9 +148,7 @@ async def test_browser_to_tls_client_e2e_flow(monkeypatch: pytest.MonkeyPatch) -
         assert len(server.requests_log) >= 1
         last_req = server.requests_log[-1]
         assert last_req.path == "/api/data"
-        assert (
-            last_req.headers.get("User-Agent") == "Mozilla/5.0 E2E-Antidetect-Browser"
-        )
+        assert last_req.headers.get("User-Agent") == "Mozilla/5.0 E2E-Antidetect-Browser"
         cookie_header = last_req.headers.get("Cookie", "")
         assert "cf_clearance=e2e_valid_clearance_token_xyz" in cookie_header
 
@@ -189,12 +182,8 @@ def test_browser_to_tls_session_sync_e2e_flow(monkeypatch: pytest.MonkeyPatch) -
         )
 
         assert session.impersonate == "chrome120"
-        assert (
-            session.default_headers.get("User-Agent") == "Mozilla/5.0 E2E-SeleniumSync"
-        )
-        assert "cf_clearance=sync_e2e_cf_token_123" in session.default_headers.get(
-            "Cookie", ""
-        )
+        assert session.default_headers.get("User-Agent") == "Mozilla/5.0 E2E-SeleniumSync"
+        assert "cf_clearance=sync_e2e_cf_token_123" in session.default_headers.get("Cookie", "")
 
         # 3. Выполняем синхронный запрос к серверу
         resp = session.get(protected_url)
@@ -207,6 +196,4 @@ def test_browser_to_tls_session_sync_e2e_flow(monkeypatch: pytest.MonkeyPatch) -
         last_req = server.requests_log[-1]
         assert last_req.path == "/sync/data"
         assert last_req.headers.get("User-Agent") == "Mozilla/5.0 E2E-SeleniumSync"
-        assert "cf_clearance=sync_e2e_cf_token_123" in last_req.headers.get(
-            "Cookie", ""
-        )
+        assert "cf_clearance=sync_e2e_cf_token_123" in last_req.headers.get("Cookie", "")

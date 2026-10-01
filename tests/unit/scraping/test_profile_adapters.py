@@ -86,6 +86,7 @@ async def test_nodriver_adapter():
 @pytest.mark.asyncio
 async def test_nodriver_adapter_cdp_cookie_objects():
     """Проверяет экспорт, когда send возвращает список объектов cdp.network.Cookie с enum same_site."""
+
     class FakeSameSiteEnum:
         value = "Lax"
 
@@ -120,6 +121,7 @@ async def test_nodriver_adapter_cdp_cookie_objects():
 @pytest.mark.asyncio
 async def test_nodriver_adapter_wrapped_result_and_direct_list():
     """Проверяет экспорт, когда send возвращает объект с атрибутом .cookies или список словарей."""
+
     # 1. Объект с атрибутом .cookies
     class FakeCDPResult:
         def __init__(self, cookies):

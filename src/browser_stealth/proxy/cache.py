@@ -62,7 +62,9 @@ class FileCacheBackend(BaseCacheBackend[str]):
                     if isinstance(parsed, dict):
                         self._data = parsed
                 except Exception as exc:
-                    logger.warning("Ошибка чтения дискового кэша прокси %s: %s", self.file_path, exc)
+                    logger.warning(
+                        "Ошибка чтения дискового кэша прокси %s: %s", self.file_path, exc
+                    )
                     self._data = {}
             else:
                 self._data = {}
@@ -160,7 +162,9 @@ class FileCacheBackend(BaseCacheBackend[str]):
             to_del = [
                 k
                 for k, v in self._data.items()
-                if isinstance(v, dict) and isinstance(tags := v.get("tags"), (list, tuple, set)) and tag in tags
+                if isinstance(v, dict)
+                and isinstance(tags := v.get("tags"), (list, tuple, set))
+                and tag in tags
             ]
             for k in to_del:
                 del self._data[k]

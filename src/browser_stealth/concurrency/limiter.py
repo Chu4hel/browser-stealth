@@ -83,10 +83,7 @@ class DomainRateLimiter:
                 self._domain_locks[rule_key] = asyncio.Lock()
             domain_lock = self._domain_locks[rule_key]
 
-            if (
-                rule_key in self.max_domain_concurrency
-                and rule_key not in self._semaphores
-            ):
+            if rule_key in self.max_domain_concurrency and rule_key not in self._semaphores:
                 self._semaphores[rule_key] = asyncio.Semaphore(
                     self.max_domain_concurrency[rule_key]
                 )
@@ -104,9 +101,7 @@ class DomainRateLimiter:
                 await asyncio.sleep(delay - elapsed)
 
             self._last_request_time[rule_key] = time.monotonic()
-            self._active_connections[rule_key] = (
-                self._active_connections.get(rule_key, 0) + 1
-            )
+            self._active_connections[rule_key] = self._active_connections.get(rule_key, 0) + 1
 
     def release(self, url: str) -> None:
         """Освобождает слот подключения после завершения запроса.
@@ -118,8 +113,6 @@ class DomainRateLimiter:
         rule_key, _ = self.get_rule_key_and_delay(domain)
 
         if rule_key in self._active_connections:
-            self._active_connections[rule_key] = max(
-                0, self._active_connections[rule_key] - 1
-            )
+            self._active_connections[rule_key] = max(0, self._active_connections[rule_key] - 1)
         if rule_key in self._semaphores:
             self._semaphores[rule_key].release()

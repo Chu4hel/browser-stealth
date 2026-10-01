@@ -51,11 +51,7 @@ class MockPlaywrightLocator:
         Returns:
             MockPlaywrightLocator с первым узлом.
         """
-        return (
-            MockPlaywrightLocator([self._nodes[0]])
-            if self._nodes
-            else MockPlaywrightLocator([])
-        )
+        return MockPlaywrightLocator([self._nodes[0]]) if self._nodes else MockPlaywrightLocator([])
 
     @property
     def last(self) -> "MockPlaywrightLocator":
@@ -65,9 +61,7 @@ class MockPlaywrightLocator:
             MockPlaywrightLocator с последним узлом.
         """
         return (
-            MockPlaywrightLocator([self._nodes[-1]])
-            if self._nodes
-            else MockPlaywrightLocator([])
+            MockPlaywrightLocator([self._nodes[-1]]) if self._nodes else MockPlaywrightLocator([])
         )
 
     def nth(self, index: int) -> "MockPlaywrightLocator":

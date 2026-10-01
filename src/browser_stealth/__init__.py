@@ -58,7 +58,7 @@ from .humanize.turnstile import (
 )
 from .humanize.warmer import ProfileWarmer, SyncProfileWarmer
 from .launchers import camoufox, nodriver
-from .launchers.nodriver import launch_nodriver
+from .launchers.nodriver import close_tab, launch_nodriver, nodriver_session
 from .profiles.manager import ProfileManager
 from .profiles.models import BrowserProfile
 from .proxy.models import ProxyConfig, ProxyHealthResult
@@ -103,6 +103,7 @@ __all__ = [
     "bidi_session",
     "camoufox",
     "click",
+    "close_tab",
     "concurrency",
     "detect_cf_turnstile",
     "fingerprint",
@@ -115,6 +116,7 @@ __all__ = [
     "launchers",
     "move_mouse",
     "nodriver",
+    "nodriver_session",
     "parse_proxy",
     "profiles",
     "proxy",
