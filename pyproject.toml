@@ -7,7 +7,7 @@ authors = [
     { name = "Chu4hel", email = "106600877+Chu4hel@users.noreply.github.com" }
 ]
 license = "MIT"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 keywords = [
     "playwright-stealth",
     "nodriver",
