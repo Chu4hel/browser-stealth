@@ -29,8 +29,8 @@ def test_proxy_candidate_model() -> None:
     assert cfg2.username is None
 
 
-def test_generate_candidates_various_formats() -> None:
-    resolver = SmartProxyResolver()
+def test_generate_candidates_various_formats(tmp_path: Path) -> None:
+    resolver = SmartProxyResolver(cache_path=tmp_path / "proxy_cache.json")
 
     # 1. Формат host:port:user:pass (по умолчанию http, затем socks5)
     cands1 = resolver.generate_candidates("1.2.3.4:8080:myuser:mypass")
@@ -116,8 +116,8 @@ def _make_mock_writer() -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_probe_http_success_and_failure() -> None:
-    resolver = SmartProxyResolver()
+async def test_probe_http_success_and_failure(tmp_path: Path) -> None:
+    resolver = SmartProxyResolver(cache_path=tmp_path / "proxy_cache.json")
 
     # Успешный HTTP CONNECT
     mock_reader = AsyncMock()
@@ -137,8 +137,8 @@ async def test_probe_http_success_and_failure() -> None:
 
 
 @pytest.mark.asyncio
-async def test_probe_http_fallback_get_204() -> None:
-    resolver = SmartProxyResolver()
+async def test_probe_http_fallback_get_204(tmp_path: Path) -> None:
+    resolver = SmartProxyResolver(cache_path=tmp_path / "proxy_cache.json")
     mock_reader = AsyncMock()
     # Сначала 405 Method Not Allowed на CONNECT, затем 204 No Content на GET
     mock_reader.readline.side_effect = [
@@ -152,8 +152,8 @@ async def test_probe_http_fallback_get_204() -> None:
 
 
 @pytest.mark.asyncio
-async def test_probe_socks5_lifecycle() -> None:
-    resolver = SmartProxyResolver()
+async def test_probe_socks5_lifecycle(tmp_path: Path) -> None:
+    resolver = SmartProxyResolver(cache_path=tmp_path / "proxy_cache.json")
 
     # 1. SOCKS5 без авторизации (0x00)
     mock_reader = AsyncMock()
@@ -191,8 +191,8 @@ async def test_probe_socks5_lifecycle() -> None:
 
 
 @pytest.mark.asyncio
-async def test_probe_socks4() -> None:
-    resolver = SmartProxyResolver()
+async def test_probe_socks4(tmp_path: Path) -> None:
+    resolver = SmartProxyResolver(cache_path=tmp_path / "proxy_cache.json")
     mock_reader = AsyncMock()
     mock_reader.read.return_value = b"\x00\x5a\x00\x50\x01\x01\x01\x01"
     mock_writer = _make_mock_writer()
@@ -233,8 +233,8 @@ async def test_smart_proxy_resolver_resolve_and_cache(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_smart_proxy_resolver_check_health() -> None:
-    resolver = SmartProxyResolver()
+async def test_smart_proxy_resolver_check_health(tmp_path: Path) -> None:
+    resolver = SmartProxyResolver(cache_path=tmp_path / "proxy_cache.json")
 
     with patch.object(resolver, "probe_proxy", new=AsyncMock(return_value=True)):
         health = await resolver.check_health("http://1.2.3.4:8080")
@@ -250,8 +250,8 @@ async def test_smart_proxy_resolver_check_health() -> None:
 
 
 @pytest.mark.asyncio
-async def test_smart_proxy_resolver_resolve_config() -> None:
-    resolver = SmartProxyResolver()
+async def test_smart_proxy_resolver_resolve_config(tmp_path: Path) -> None:
+    resolver = SmartProxyResolver(cache_path=tmp_path / "proxy_cache.json")
 
     with patch.object(resolver, "probe_proxy", new=AsyncMock(return_value=True)):
         cfg = await resolver.resolve_config("1.2.3.4:8080:myuser:mypass")

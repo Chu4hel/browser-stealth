@@ -70,11 +70,11 @@ class SmartProxyResolver:
         """Инициализирует резолвер прокси.
 
         Args:
-            cache_path: Путь к файлу кэша. Если не указан, используется .chutils/proxy_cache.json.
+            cache_path: Путь к файлу кэша. Если не указан, используется .browser_stealth/proxy_cache.json.
             probe_timeout: Таймаут проверки соединения с кандидатом в секундах.
             target_url: Целевой легковесный URL для тестового HTTP GET-запроса при проверке.
         """
-        p = Path(cache_path or ".chutils/proxy_cache.json")
+        p = Path(cache_path or ".browser_stealth/proxy_cache.json")
         self.cache = FileCacheBackend(p)
         self.probe_timeout = probe_timeout
         self.target_url = target_url
