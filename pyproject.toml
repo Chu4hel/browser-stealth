@@ -1,0 +1,101 @@
+[project]
+name = "browser-stealth"
+version = "0.1.0"
+description = "Next-generation browser antidetect, human-like behavior emulation (WindMouse), and profile warmer for Playwright, nodriver, and Selenium."
+readme = "README.md"
+authors = [
+    { name = "Chu4hel", email = "106600877+Chu4hel@users.noreply.github.com" }
+]
+license = "MIT"
+requires-python = ">=3.11"
+keywords = [
+    "playwright-stealth",
+    "nodriver",
+    "antidetect",
+    "web-scraping",
+    "windmouse",
+    "turnstile-solver",
+    "browser-automation",
+]
+dependencies = [
+    "pydantic>=2.10.0",
+]
+
+[project.optional-dependencies]
+playwright = ["playwright>=1.40.0"]
+nodriver = ["nodriver>=0.38"]
+selenium = ["selenium>=4.15.0"]
+camoufox = ["camoufox>=0.4.0"]
+bidi = ["websockets>=14.0.0"]
+crypto = ["cryptography>=41.0.0"]
+all = [
+    "browser-stealth[playwright,nodriver,selenium,camoufox,bidi,crypto]",
+]
+
+[project.entry-points."chutils.plugins.stealth"]
+browser_stealth = "browser_stealth.plugin:BrowserStealthPluginImpl"
+
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "chutils",
+    "cryptography>=50.0.2",
+    "httpx>=0.28.1",
+    "mypy>=2.3.1",
+    "playwright>=1.62.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-mock>=3.16.0",
+    "ruff>=0.16.9",
+    "selenium>=4.50.0",
+    "websockets>=17.1",
+]
+
+[tool.uv.sources]
+chutils = { path = "../chutils", editable = true }
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "e2e: End-to-end integration and antidetect tests",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+ignore = [
+    "B009",   # Do not call getattr with a constant attribute name
+    "B010",   # Do not call setattr with a constant attribute name
+    "BLE001", # Do not catch blind exception
+    "S110",   # try-except-pass
+    "S101",   # Use of assert
+    "PIE810", # startswith tuple
+    "SIM103", # return condition directly
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "B008",
+    "B017",
+    "SIM117",
+    "RUF059",
+    "S101",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+
