@@ -1,0 +1,60 @@
+site_name: browser-stealth
+site_description: "Глубокая маскировка рантайма и биомеханика поведения человека для Playwright, nodriver, Selenium и BiDi."
+site_author: "Chu4hel"
+site_url: "https://Chu4hel.github.io/browser-stealth/"
+
+theme:
+  name: material
+  language: ru
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Темная тема
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Светлая тема
+  features:
+    - content.code.copy
+    - navigation.tabs
+    - navigation.top
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Главная: index.md
+  - Быстрый старт: quickstart.md
+  - Биомеханика и действия (humanize): humanize.md
+  - Антидетект и маскировка (antidetect): antidetect.md
+  - Менеджер профилей (profiles): profiles.md
+  - Управление прокси (proxy): proxy.md
+  - Синтез цифровой личности (fingerprint): fingerprint.md
+  - Автотестирование и моки (testing): testing.md
+  - Спецификация экстракции: extraction_spec.md
+  - Справочник API: api.md
