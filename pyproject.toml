@@ -1,6 +1,6 @@
 [project]
 name = "browser-stealth"
-version = "0.1.0"
+version = "0.1.1"
 description = "Next-generation browser antidetect, human-like behavior emulation (WindMouse), and profile warmer for Playwright, nodriver, and Selenium."
 readme = "README.md"
 authors = [
