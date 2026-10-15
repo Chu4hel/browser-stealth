@@ -224,7 +224,7 @@ provides-extras = ["playwright", "nodriver", "selenium", "camoufox", "bidi", "cr
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "chutils", editable = "../chutils" },
+    { name = "chutils" },
     { name = "cryptography", specifier = ">=50.0.2" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mypy", specifier = ">=2.3.1" },
@@ -535,79 +535,15 @@ wheels = [
 
 [[package]]
 name = "chutils"
-version = "4.0.0"
-source = { editable = "../chutils" }
+version = "3.9.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiosqlite", marker = "extra == 'db'", specifier = ">=0.20.0" },
-    { name = "alembic", marker = "extra == 'db'", specifier = ">=1.13.0" },
-    { name = "asyncpg", marker = "extra == 'db'", specifier = ">=0.29.0" },
-    { name = "boto3", marker = "extra == 'aws'", specifier = ">=1.34.0" },
-    { name = "boto3", marker = "extra == 'full'", specifier = ">=1.34.0" },
-    { name = "cryptography", marker = "extra == 'crypto'", specifier = ">=42.0.0" },
-    { name = "cryptography", marker = "extra == 'full'", specifier = ">=42.0.0" },
-    { name = "curl-cffi", marker = "extra == 'tls'", specifier = ">=0.7.0" },
-    { name = "google-cloud-secret-manager", marker = "extra == 'full'", specifier = ">=2.20.0" },
-    { name = "google-cloud-secret-manager", marker = "extra == 'gcp'", specifier = ">=2.20.0" },
-    { name = "httpx", marker = "extra == 'full'", specifier = ">=0.27.0" },
-    { name = "httpx", marker = "extra == 'web'", specifier = ">=0.27.0" },
-    { name = "keyring", marker = "extra == 'full'", specifier = ">=25.7.0" },
-    { name = "keyring", marker = "extra == 'secrets'", specifier = ">=25.7.0" },
-    { name = "opentelemetry-api", marker = "extra == 'full'", specifier = ">=1.41.1" },
-    { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.41.1" },
-    { name = "opentelemetry-exporter-otlp", marker = "extra == 'full'", specifier = ">=1.41.1" },
-    { name = "opentelemetry-exporter-otlp", marker = "extra == 'otel'", specifier = ">=1.41.1" },
-    { name = "opentelemetry-sdk", marker = "extra == 'full'", specifier = ">=1.41.1" },
-    { name = "opentelemetry-sdk", marker = "extra == 'otel'", specifier = ">=1.41.1" },
-    { name = "prometheus-client", marker = "extra == 'full'", specifier = ">=0.20.0,<1.0.0" },
-    { name = "prometheus-client", marker = "extra == 'metrics'", specifier = ">=0.20.0,<1.0.0" },
-    { name = "pydantic", marker = "extra == 'full'", specifier = ">=2.13.4" },
-    { name = "pydantic", marker = "extra == 'pydantic'", specifier = ">=2.13.4,<3.0.0" },
-    { name = "pydantic", marker = "extra == 'vk'", specifier = ">=2.13.4,<3.0.0" },
-    { name = "pydantic", marker = "extra == 'vkma'", specifier = ">=2.13.4,<3.0.0" },
-    { name = "pyqt6", marker = "extra == 'qt'", specifier = ">=6.6.0" },
-    { name = "pyside6", marker = "extra == 'qt-pyside'", specifier = ">=6.6.0" },
-    { name = "pytest", marker = "extra == 'full'", specifier = ">=9.0.3" },
-    { name = "pytest", marker = "extra == 'testing'", specifier = ">=9.0.3" },
-    { name = "python-dateutil", marker = "extra == 'date'", specifier = ">=2.9.0" },
-    { name = "python-dateutil", marker = "extra == 'full'", specifier = ">=2.9.0" },
-    { name = "python-dotenv", specifier = ">=1.2.2" },
-    { name = "python-json-logger", marker = "extra == 'full'", specifier = ">=3.2.1" },
-    { name = "python-json-logger", marker = "extra == 'json'", specifier = ">=3.2.1" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "rapidfuzz", marker = "extra == 'full'", specifier = ">=3.9.0" },
-    { name = "rapidfuzz", marker = "extra == 'text'", specifier = ">=3.9.0" },
-    { name = "redis", marker = "extra == 'redis'", specifier = ">=5.0.0" },
-    { name = "rich", marker = "extra == 'full'", specifier = ">=15.0.0" },
-    { name = "rich", marker = "extra == 'rich'", specifier = ">=15.0.0" },
-    { name = "sqlalchemy", marker = "extra == 'db'", specifier = ">=2.0.0" },
-    { name = "watchdog", marker = "extra == 'full'", specifier = ">=6.0.0" },
-    { name = "watchdog", marker = "extra == 'watch'", specifier = ">=6.0.0" },
-    { name = "websockets", marker = "extra == 'full'", specifier = ">=14.0.0" },
-    { name = "websockets", marker = "extra == 'websockets'", specifier = ">=14.0.0" },
-]
-provides-extras = ["secrets", "aws", "gcp", "pydantic", "json", "watch", "rich", "date", "metrics", "text", "crypto", "web", "websockets", "tls", "db", "redis", "qt", "qt-pyside", "vk", "vkma", "testing", "otel", "full"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "fastapi", specifier = ">=0.110.0" },
-    { name = "mkdocs", specifier = ">=1.6.1" },
-    { name = "mkdocs-material", specifier = ">=9.7.5" },
-    { name = "mkdocstrings", marker = "python_full_version < '3.14'", specifier = ">=1.0.4" },
-    { name = "mkdocstrings-python", specifier = ">=2.0.3" },
-    { name = "mypy", specifier = ">=2.1.0" },
-    { name = "pyfakefs", specifier = ">=6.2.0" },
-    { name = "pytest", specifier = ">=9.0.3" },
-    { name = "pytest-asyncio", specifier = ">=1.3.0" },
-    { name = "pytest-cov", marker = "python_full_version < '3.14'", specifier = ">=7.1.0" },
-    { name = "pytest-mock", specifier = ">=3.15.1" },
-    { name = "ruff", specifier = ">=0.15.12" },
-    { name = "websockets", specifier = ">=14.0.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/28/1b/fc9a68a9c99c0297f38618fd56671dece806757fb11b3a39207cc5c367ea/chutils-3.9.0.tar.gz", hash = "sha256:2dadeba1fe0ec9b19ffbf6e6902c3864188229d0997a72ace66fb00c6d333cda", size = 1473124, upload-time = "2026-09-25T21:44:40.265Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f0/78/dc990c9773f4523b865e0db9b7a1e77d87018257c989d241d4806fc6e033/chutils-3.9.0-py3-none-any.whl", hash = "sha256:6f7ea1178be01587df08f741022d3e0ba8700adfdc26260dbc65317551d15566", size = 710662, upload-time = "2026-09-25T21:44:37.682Z" },
 ]
 
 [[package]]
