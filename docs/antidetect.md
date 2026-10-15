@@ -12,16 +12,16 @@
 from browser_stealth import AntidetectConfig
 
 config = AntidetectConfig(
-    hide_webdriver=True,           # navigator.webdriver = undefined
-    patch_permissions=True,        # Notification / Permissions API spoofing
-    patch_plugins=True,            # Эмуляция PDF Viewer и стандартных плагинов
-    patch_screen=True,             # Согласованность window.screen и window.outerWidth
+    hide_webdriver=True,  # navigator.webdriver = undefined
+    patch_permissions=True,  # Notification / Permissions API spoofing
+    patch_plugins=True,  # Эмуляция PDF Viewer и стандартных плагинов
+    patch_screen=True,  # Согласованность window.screen и window.outerWidth
     screen_width=1920,
     screen_height=1080,
-    patch_webgl=True,              # Вендор и рендерер WebGL (например, NVIDIA/ANGLE)
+    patch_webgl=True,  # Вендор и рендерер WebGL (например, NVIDIA/ANGLE)
     webgl_vendor="Google Inc. (NVIDIA)",
     webgl_renderer="ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Direct3D11 vs_5_0 ps_5_0)",
-    patch_audio=True,              # Аудио-джиттер WebAudio API
+    patch_audio=True,  # Аудио-джиттер WebAudio API
     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36...",
     languages=["ru-RU", "ru", "en-US", "en"],
     platform="Win32",
@@ -92,6 +92,6 @@ from browser_stealth.antidetect import extract_clearance_cookies
 
 # Извлечение cf_clearance и User-Agent
 credentials = await extract_clearance_cookies(page)
-print(credentials["cookies"])     # [{'name': 'cf_clearance', 'value': '...'}]
+print(credentials["cookies"])  # [{'name': 'cf_clearance', 'value': '...'}]
 print(credentials["user_agent"])  # 'Mozilla/5.0 ...'
 ```

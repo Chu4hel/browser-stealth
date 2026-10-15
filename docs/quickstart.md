@@ -35,17 +35,19 @@ import asyncio
 from browser_stealth import launch_nodriver, nodriver_session
 from browser_stealth.humanize.actions import async_click, async_type_text
 
+
 async def main():
     async with nodriver_session(headless=False) as browser:
         page = await browser.get("https://bot.sannysoft.com")
-        
+
         # Эмуляция естественного клика
         await async_click(page, "#some-button", use_windmouse=True)
-        
+
         # Биомеханический ввод текста с опечатками
         await async_type_text(page, "#input-field", "Hello world!", with_typos=True)
-        
+
         await asyncio.sleep(5)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -61,6 +63,7 @@ from playwright.async_api import async_playwright
 from browser_stealth import AntidetectConfig, apply_antidetect_playwright
 from browser_stealth.humanize.actions import async_click, async_type_text
 
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
@@ -72,12 +75,13 @@ async def main():
         await apply_antidetect_playwright(page, config)
 
         await page.goto("https://nowecure.com")
-        
+
         # Естественные действия
         await async_click(page, "button#login")
         await async_type_text(page, "input#email", "user@example.com")
-        
+
         await browser.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

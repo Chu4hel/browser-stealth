@@ -31,9 +31,11 @@ assert_extraction_complete(
 from pydantic import BaseModel
 from browser_stealth.testing.assertions import assert_schema_match
 
+
 class ProductModel(BaseModel):
     title: str
     price: int
+
 
 assert_schema_match(extracted_item, ProductModel)
 ```

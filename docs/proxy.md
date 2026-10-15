@@ -17,9 +17,9 @@ from browser_stealth import parse_proxy
 
 config = parse_proxy("1.2.3.4:8080:myuser:mypass")
 print(config.protocol)  # "http"
-print(config.host)      # "1.2.3.4"
-print(config.port)      # 8080
-print(config.url)       # "http://myuser:mypass@1.2.3.4:8080"
+print(config.host)  # "1.2.3.4"
+print(config.port)  # 8080
+print(config.url)  # "http://myuser:mypass@1.2.3.4:8080"
 ```
 
 ---

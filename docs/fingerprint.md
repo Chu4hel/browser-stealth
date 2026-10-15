@@ -20,12 +20,12 @@ synthesizer = FingerprintSynthesizer()
 # Детерминированная генерация по сиду (или случайная)
 profile = synthesizer.generate(seed="my_stable_seed_123")
 
-print(profile.os)              # "windows"
-print(profile.webgl.vendor)    # "Google Inc. (NVIDIA)"
+print(profile.os)  # "windows"
+print(profile.webgl.vendor)  # "Google Inc. (NVIDIA)"
 print(profile.webgl.renderer)  # "ANGLE (NVIDIA, NVIDIA GeForce RTX 3080 Direct3D11...)"
-print(profile.screen.width)    # 1920
-print(profile.screen.height)   # 1080
-print(profile.screen.avail_height) # 1040 (минус панель задач)
+print(profile.screen.width)  # 1920
+print(profile.screen.height)  # 1080
+print(profile.screen.avail_height)  # 1040 (минус панель задач)
 ```
 
 ---
