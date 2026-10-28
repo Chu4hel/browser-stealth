@@ -225,21 +225,7 @@ async def apply_clipboard_isolation(page_or_tab: Any) -> bool:
 
     success = False
 
-    # 1. Playwright
-    if hasattr(page_or_tab, "add_init_script") and callable(page_or_tab.add_init_script):
-        try:
-            res_init = page_or_tab.add_init_script(INSTALL_CLIPBOARD_HOOK_JS)
-            if inspect.isawaitable(res_init):
-                await res_init
-            if hasattr(page_or_tab, "evaluate") and callable(page_or_tab.evaluate):
-                res_eval = page_or_tab.evaluate(INSTALL_CLIPBOARD_HOOK_JS)
-                if inspect.isawaitable(res_eval):
-                    await res_eval
-            return True
-        except Exception as exc:
-            logger.debug("Сбой установки изоляции буфера обмена в Playwright: %s", exc)
-
-    # 2. nodriver
+    # 1. nodriver (CDP tab with send)
     if hasattr(page_or_tab, "send") and callable(page_or_tab.send):
         try:
             from nodriver.cdp import page as cdp_page
@@ -256,6 +242,20 @@ async def apply_clipboard_isolation(page_or_tab: Any) -> bool:
             return True
         except Exception as exc:
             logger.debug("Сбой установки изоляции буфера обмена в nodriver: %s", exc)
+
+    # 2. Playwright (Page / BrowserContext)
+    if hasattr(page_or_tab, "add_init_script") and callable(page_or_tab.add_init_script):
+        try:
+            res_init = page_or_tab.add_init_script(INSTALL_CLIPBOARD_HOOK_JS)
+            if inspect.isawaitable(res_init):
+                await res_init
+            if hasattr(page_or_tab, "evaluate") and callable(page_or_tab.evaluate):
+                res_eval = page_or_tab.evaluate(INSTALL_CLIPBOARD_HOOK_JS)
+                if inspect.isawaitable(res_eval):
+                    await res_eval
+            return True
+        except Exception as exc:
+            logger.debug("Сбой установки изоляции буфера обмена в Playwright: %s", exc)
 
     # 3. Selenium
     if hasattr(page_or_tab, "execute_cdp_cmd") and callable(page_or_tab.execute_cdp_cmd):

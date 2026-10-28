@@ -18,6 +18,7 @@ async def test_apply_clipboard_isolation_none() -> None:
 @pytest.mark.asyncio
 async def test_apply_clipboard_isolation_playwright() -> None:
     page = MagicMock()
+    del page.send
     page.add_init_script = AsyncMock()
     page.evaluate = AsyncMock(return_value=True)
 
