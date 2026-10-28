@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 import time
 import urllib.parse
@@ -31,6 +32,7 @@ from .search import (
     get_random_search_queries,
     get_search_engine_config,
     is_organic_url,
+    unwrap_redirect_url,
 )
 
 logger = setup_logger(__name__)
@@ -60,6 +62,39 @@ class ProfileWarmer:
             browser_or_tab: Объект страницы Playwright Page или вкладки nodriver Tab.
         """
         self.browser_or_tab = browser_or_tab
+
+    async def _safe_evaluate_links(self, script: str) -> list[str]:
+        """Безопасно выполняет JS-скрипт сбора ссылок с поддержкой IIFE для nodriver и распаковкой редиректов."""
+        clean_script = script.strip()
+        if (clean_script.startswith("() =>") or clean_script.startswith("function")) and not clean_script.endswith("()"):
+            wrapped_js = f"(({clean_script}))()"
+        else:
+            wrapped_js = clean_script
+
+        try:
+            raw_res = await self.browser_or_tab.evaluate(wrapped_js)
+            parsed_list: list[Any] | None = None
+            if isinstance(raw_res, list):
+                parsed_list = raw_res
+            elif isinstance(raw_res, str):
+                try:
+                    loaded = json.loads(raw_res)
+                    if isinstance(loaded, list):
+                        parsed_list = loaded
+                except Exception:
+                    pass
+
+            if parsed_list is not None:
+                clean_links: list[str] = []
+                for item in parsed_list:
+                    if isinstance(item, str) and item:
+                        unwrapped = unwrap_redirect_url(item)
+                        clean_links.append(unwrapped or item)
+                return clean_links
+            return []
+        except Exception as exc:
+            logger.debug("Сбой при извлечении ссылок через evaluate: %s", exc)
+            return []
 
     async def warm_up(
         self,
@@ -136,7 +171,7 @@ class ProfileWarmer:
                         await async_human_sleep(1.0, 3.0)
                     elif action == "click_link":
                         curr_url = await _safe_get_async_url(self.browser_or_tab)
-                        links = await self.browser_or_tab.evaluate("""(() => {
+                        links = await self._safe_evaluate_links("""(() => {
                             return Array.from(document.querySelectorAll('a[href]'))
                                 .map(a => a.getAttribute('href'))
                                 .filter(href => href && (href.startsWith('/') || href.startsWith(window.location.origin)));
@@ -284,7 +319,7 @@ class ProfileWarmer:
                 await async_human_sleep(1.5, 3.5)
 
                 if click_result:
-                    links = await self.browser_or_tab.evaluate("""(() => {
+                    links = await self._safe_evaluate_links("""(() => {
                         return Array.from(document.querySelectorAll('a[href]'))
                             .map(a => a.href)
                             .filter(Boolean);

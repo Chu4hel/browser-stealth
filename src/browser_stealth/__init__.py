@@ -65,7 +65,7 @@ from .proxy.models import ProxyConfig, ProxyHealthResult
 from .proxy.parser import parse_proxy
 from .proxy.pool import ProxyPool
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "ANTIDETECT_JS_SCRIPT",

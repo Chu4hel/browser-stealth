@@ -13,13 +13,23 @@ from urllib.parse import quote, unquote, urlsplit
 from chutils import setup_logger
 from pydantic import BaseModel, Field
 
-from browser_stealth.proxy.cache import FileCacheBackend
+from browser_stealth.proxy.cache import (
+    BaseCacheBackend,
+    BoundedMemoryCacheBackend,
+    FileCacheBackend,
+)
 from browser_stealth.proxy.models import ProxyConfig, ProxyHealthResult
 from browser_stealth.proxy.parser import parse_proxy
 
 logger = setup_logger(__name__)
 
-__all__ = ["FileCacheBackend", "ProxyCandidate", "SmartProxyResolver"]
+__all__ = [
+    "BaseCacheBackend",
+    "BoundedMemoryCacheBackend",
+    "FileCacheBackend",
+    "ProxyCandidate",
+    "SmartProxyResolver",
+]
 
 
 class ProxyCandidate(BaseModel):
@@ -66,16 +76,25 @@ class SmartProxyResolver:
         cache_path: Path | str | None = None,
         probe_timeout: float = 2.5,
         target_url: str = "http://www.google.com/generate_204",
+        use_memory_cache: bool = True,
+        max_cache_entries: int = 100,
     ) -> None:
         """Инициализирует резолвер прокси.
 
         Args:
-            cache_path: Путь к файлу кэша. Если не указан, используется .browser_stealth/proxy_cache.json.
+            cache_path: Путь к файлу кэша (только при use_memory_cache=False).
             probe_timeout: Таймаут проверки соединения с кандидатом в секундах.
             target_url: Целевой легковесный URL для тестового HTTP GET-запроса при проверке.
+            use_memory_cache: Использовать ли защищенный кэш в RAM вместо дискового файла (предотвращает сохранение паролей на диск).
+            max_cache_entries: Максимальное количество записей в памяти при use_memory_cache=True.
         """
-        p = Path(cache_path or ".browser_stealth/proxy_cache.json")
-        self.cache = FileCacheBackend(p)
+        if use_memory_cache or cache_path is None:
+            self.cache: BaseCacheBackend[str] = BoundedMemoryCacheBackend(max_entries=max_cache_entries)
+        else:
+            p = Path(cache_path)
+            self.cache = FileCacheBackend(p)
+        self.probe_timeout = probe_timeout
+        self.target_url = target_url
         self.probe_timeout = probe_timeout
         self.target_url = target_url
 

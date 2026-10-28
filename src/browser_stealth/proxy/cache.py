@@ -170,3 +170,87 @@ class FileCacheBackend(BaseCacheBackend[str]):
                 del self._data[k]
             if to_del:
                 self._save()
+
+
+class BoundedMemoryCacheBackend(BaseCacheBackend[str]):
+    """Потокобезопасный кэш в оперативной памяти с ограничением размера и LRU-вытеснением."""
+
+    def __init__(self, max_entries: int = 100) -> None:
+        """Инициализирует кэш в памяти с ограничением размера.
+
+        Args:
+            max_entries: Максимальное количество записей в кэше.
+        """
+        self._max_entries = max_entries
+        self._lock = threading.RLock()
+        self._data: dict[str, dict[str, object]] = {}
+
+    def get(self, key: str) -> str | None:
+        """Возвращает значение из кэша с проверкой срока жизни и обновлением LRU."""
+        with self._lock:
+            entry = self._data.get(key)
+            if not isinstance(entry, dict):
+                return None
+            expires_at = entry.get("expires_at")
+            if isinstance(expires_at, (int, float)) and time.time() > expires_at:
+                del self._data[key]
+                return None
+            self._data[key] = self._data.pop(key)
+            val = entry.get("value")
+            return str(val) if val is not None else None
+
+    def set(
+        self,
+        key: str,
+        value: str,
+        ttl: int | None = None,
+        tags: list[str] | None = None,
+    ) -> None:
+        """Сохраняет значение с ограничением по максимальному количеству элементов."""
+        with self._lock:
+            if key in self._data:
+                self._data.pop(key)
+            expires_at = (time.time() + ttl) if ttl is not None else None
+            self._data[key] = {
+                "value": value,
+                "expires_at": expires_at,
+                "tags": tags or [],
+                "updated_at": time.time(),
+            }
+            while len(self._data) > self._max_entries:
+                oldest_key = next(iter(self._data))
+                del self._data[oldest_key]
+
+    def delete(self, key: str) -> None:
+        """Удаляет ключ из кэша."""
+        with self._lock:
+            self._data.pop(key, None)
+
+    def exists(self, key: str) -> bool:
+        """Проверяет наличие непросроченного ключа."""
+        return self.get(key) is not None
+
+    def clear(self) -> None:
+        """Полностью очищает кэш."""
+        with self._lock:
+            self._data.clear()
+
+    def invalidate_tag(self, tag: str) -> None:
+        """Инвалидирует все ключи с заданным тегом."""
+        with self._lock:
+            to_del = [
+                k
+                for k, v in self._data.items()
+                if isinstance(v, dict)
+                and isinstance(tags := v.get("tags"), (list, tuple, set))
+                and tag in tags
+            ]
+            for k in to_del:
+                self._data.pop(k, None)
+
+
+__all__ = [
+    "BaseCacheBackend",
+    "BoundedMemoryCacheBackend",
+    "FileCacheBackend",
+]

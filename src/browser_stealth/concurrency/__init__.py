@@ -13,6 +13,7 @@ from .reaper import (
     IdleReaper,
     IdleReaperConfig,
 )
+from .tabs import SessionTabPool, TabSession
 
 __all__ = [
     "BaseTaskQueue",
@@ -25,5 +26,7 @@ __all__ = [
     "PersistentTaskQueue",
     "RedisTaskQueue",
     "ScrapingTask",
+    "SessionTabPool",
+    "TabSession",
     "WorkerPool",
 ]

@@ -141,6 +141,28 @@ def is_organic_url(url: str, engine: str = "google") -> bool:
     return True
 
 
+def unwrap_redirect_url(url: str) -> str:
+    """Извлекает прямой целевой URL из поисковых редиректов Google/Yandex (/url?q=...).
+
+    Args:
+        url: Исходный URL, возможно содержащий поисковый редирект.
+
+    Returns:
+        Извлеченный целевой URL или исходный URL, если редирект не обнаружен.
+    """
+    if not url or not isinstance(url, str):
+        return ""
+    if "/url?q=" in url or "/url?url=" in url:
+        try:
+            p = urllib.parse.urlparse(url)
+            qs = urllib.parse.parse_qs(p.query)
+            target = qs.get("q", qs.get("url", [url]))[0]
+            return target
+        except Exception:
+            pass
+    return url
+
+
 def _is_bot_detection(url: str, content: str = "") -> bool:
     """Проверяет признаки страницы проверки на роботов или капчи.
 
@@ -173,4 +195,5 @@ __all__ = [
     "get_random_search_queries",
     "get_search_engine_config",
     "is_organic_url",
+    "unwrap_redirect_url",
 ]
