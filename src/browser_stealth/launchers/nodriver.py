@@ -412,6 +412,7 @@ class ChromiumProcessManager:
                 browser_args=browser_args,
                 purpose=profile_name or p_path.name,
                 fail_on_dead=False,
+                tunnel_cls=tunnel_cls,
             )
 
         if is_profile_locked(p_path):

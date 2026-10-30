@@ -392,6 +392,7 @@ async def setup_browser_proxy(
     fail_on_dead: bool = False,
     target_url: str = "https://www.google.com/generate_204",
     timeout: float = 5.0,
+    tunnel_cls: type[AsyncProxyTunnel] | None = None,
 ) -> AsyncProxyTunnel | None:
     """Настраивает прокси для браузерной сессии с предварительной валидацией доступности.
 
@@ -403,6 +404,7 @@ async def setup_browser_proxy(
         fail_on_dead: Выбрасывать ConnectionError, если прокси недоступен.
         target_url: URL для пинга доступности.
         timeout: Таймаут проверки соединения в секундах.
+        tunnel_cls: Опциональная фабрика/класс туннеля (по умолчанию AsyncProxyTunnel).
 
     Returns:
         Экземпляр запущенного AsyncProxyTunnel (если прокси требует авторизации) или None.
@@ -443,7 +445,8 @@ async def setup_browser_proxy(
                 )
 
         if cfg.has_auth:
-            proxy_tunnel = AsyncProxyTunnel(cfg)
+            factory = tunnel_cls or AsyncProxyTunnel
+            proxy_tunnel = factory(cfg)
             await proxy_tunnel.start()
             browser_args.append(proxy_tunnel.to_chrome_arg())
             logger.info(
