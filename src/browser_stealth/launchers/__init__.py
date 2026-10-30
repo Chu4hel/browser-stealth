@@ -2,6 +2,22 @@
 
 from __future__ import annotations
 
-from .nodriver import launch_nodriver
+from .nodriver import (
+    ChromiumProcessManager,
+    close_tab,
+    launch_nodriver,
+    nodriver_session,
+    safe_extract_dict,
+    safe_get_or_open_tab,
+    unpack_cdp_value,
+)
 
-__all__ = ["launch_nodriver"]
+__all__ = [
+    "ChromiumProcessManager",
+    "close_tab",
+    "launch_nodriver",
+    "nodriver_session",
+    "safe_extract_dict",
+    "safe_get_or_open_tab",
+    "unpack_cdp_value",
+]

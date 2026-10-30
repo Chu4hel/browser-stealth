@@ -5,7 +5,7 @@
 from .base import BaseTaskQueue
 from .limiter import DomainRateLimiter
 from .models import ScrapingTask
-from .pool import WorkerPool
+from .pool import BrowserProcessPool, WorkerPool
 from .queues import InMemoryTaskQueue, PersistentTaskQueue, RedisTaskQueue
 from .reaper import (
     IdleBrowserReaper,
@@ -17,6 +17,7 @@ from .tabs import SessionTabPool, TabSession
 
 __all__ = [
     "BaseTaskQueue",
+    "BrowserProcessPool",
     "DomainRateLimiter",
     "IdleBrowserReaper",
     "IdleBrowserReaperConfig",

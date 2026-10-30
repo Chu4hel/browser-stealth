@@ -198,6 +198,77 @@ def sanitize_profile(
     return True
 
 
+def clean_profile_cache(
+    profile_dir: str | Path,
+    *,
+    extra_subdirs: list[str] | None = None,
+) -> int:
+    """Безопасно очищает временные кэши Chromium для предотвращения разрастания диска.
+
+    Удаляет вторичные директории кэша (Cache, Code Cache, GPUCache, Crashpad),
+    сохраняя критические данные аутентификации: Cookies, Local Storage, IndexedDB,
+    Preferences и Web Data.
+
+    Args:
+        profile_dir: Путь к директории профиля Chromium.
+        extra_subdirs: Дополнительные относительные пути подкаталогов для очистки.
+
+    Returns:
+        Общее количество освобожденных байт.
+    """
+    root = Path(profile_dir).resolve()
+    if not root.exists():
+        return 0
+
+    cache_targets = [
+        "Cache",
+        "Code Cache",
+        "GPUCache",
+        "DawnGraphiteCache",
+        "DawnWebGPUCache",
+        "Crashpad",
+        "Default/Cache",
+        "Default/Code Cache",
+        "Default/GPUCache",
+        "Default/DawnGraphiteCache",
+        "Default/DawnWebGPUCache",
+        "Default/Service Worker/CacheStorage",
+        "Default/Service Worker/ScriptCache",
+    ]
+    if extra_subdirs:
+        cache_targets.extend(extra_subdirs)
+
+    freed_bytes = 0
+
+    for rel_target in cache_targets:
+        target_path = root / rel_target
+        if not target_path.exists():
+            continue
+
+        if target_path.is_file():
+            try:
+                size = target_path.stat().st_size
+                target_path.unlink()
+                freed_bytes += size
+            except Exception as exc:
+                logger.debug("Не удалось удалить файл кэша %s: %s", target_path, exc)
+        elif target_path.is_dir():
+            for child in list(target_path.rglob("*")):
+                if child.is_file():
+                    try:
+                        size = child.stat().st_size
+                        child.unlink()
+                        freed_bytes += size
+                    except Exception as exc:
+                        logger.debug("Не удалось удалить элемент кэша %s: %s", child, exc)
+            try:
+                remove_path(target_path)
+            except Exception as exc:
+                logger.debug("Не удалось удалить директорию кэша %s: %s", target_path, exc)
+
+    return freed_bytes
+
+
 def sanitize_profile_crash_state(profile_dir: str | Path) -> bool:
     """Сбрасывает флаги аварийного закрытия Chromium, предотвращая модальное окно 'Восстановить страницы'.
 
@@ -248,6 +319,7 @@ def is_profile_locked(profile_dir: str | Path) -> bool:
 
 
 __all__ = [
+    "clean_profile_cache",
     "is_profile_locked",
     "sanitize_profile",
     "sanitize_profile_crash_state",

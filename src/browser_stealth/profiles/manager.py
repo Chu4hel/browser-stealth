@@ -16,7 +16,7 @@ from browser_stealth.profiles.adapters.selenium import (
     export_selenium_profile,
     import_selenium_profile,
 )
-from browser_stealth.profiles.hygiene import sanitize_profile
+from browser_stealth.profiles.hygiene import clean_profile_cache, sanitize_profile
 from browser_stealth.profiles.models import BrowserProfile
 from browser_stealth.profiles.storage import (
     load_profile_from_file,
@@ -60,6 +60,23 @@ class ProfileManager:
             profile_dir_name=profile_dir_name,
             restore_on_startup=restore_on_startup,
         )
+
+    @staticmethod
+    def clean_cache(
+        profile_path: str | Path,
+        *,
+        extra_subdirs: list[str] | None = None,
+    ) -> int:
+        """Очищает временные кэши Chromium (Cache, Code Cache, GPUCache, Crashpad).
+
+        Args:
+            profile_path: Путь к директории профиля Chromium.
+            extra_subdirs: Дополнительные поддиректории для очистки.
+
+        Returns:
+            Количество освобожденных байт.
+        """
+        return clean_profile_cache(profile_path, extra_subdirs=extra_subdirs)
 
     @staticmethod
     async def export_from_playwright(context: Any) -> BrowserProfile:

@@ -381,3 +381,87 @@ class AsyncProxyTunnel:
             exc_tb: Трассировка стека.
         """
         await self.stop()
+
+
+async def setup_browser_proxy(
+    proxy: ProxyConfig | str | None,
+    browser_args: list[str],
+    *,
+    status_callback: object | None = None,
+    purpose: str = "сессии",
+    fail_on_dead: bool = False,
+    target_url: str = "https://www.google.com/generate_204",
+    timeout: float = 5.0,
+) -> AsyncProxyTunnel | None:
+    """Настраивает прокси для браузерной сессии с предварительной валидацией доступности.
+
+    Args:
+        proxy: Прокси (URL, строка или ProxyConfig).
+        browser_args: Список аргументов запуска браузера (будет дополнен флагом --proxy-server).
+        status_callback: Опциональный колбэк Callable[[str], None] для информирования о статусе.
+        purpose: Описание сессии для логирования.
+        fail_on_dead: Выбрасывать ConnectionError, если прокси недоступен.
+        target_url: URL для пинга доступности.
+        timeout: Таймаут проверки соединения в секундах.
+
+    Returns:
+        Экземпляр запущенного AsyncProxyTunnel (если прокси требует авторизации) или None.
+    """
+    if not proxy:
+        return None
+
+    try:
+        cfg = parse_proxy(proxy)
+        if callable(status_callback):
+            status_callback(f"🔍 Проверка доступности прокси {cfg.masked_url}...")
+        logger.info(
+            "Проверка доступности целевого прокси перед запуском %s: %s...",
+            purpose,
+            cfg.masked_url,
+        )
+
+        from browser_stealth.proxy.pool import check_proxy_async
+
+        health = await check_proxy_async(cfg, target_url=target_url, timeout=timeout)
+        if health.is_alive:
+            logger.info(
+                "Целевой прокси %s доступен (RTT: %.1f мс).",
+                cfg.masked_url,
+                health.latency_ms,
+            )
+        else:
+            warn_msg = (
+                f"⚠️ ВНИМАНИЕ: Прокси {cfg.masked_url} не отвечает ({health.error or 'таймаут'}). "
+                f"Возможна ошибка ERR_TUNNEL_CONNECTION_FAILED в браузере."
+            )
+            logger.warning(warn_msg)
+            if callable(status_callback):
+                status_callback(warn_msg)
+            if fail_on_dead:
+                raise ConnectionError(
+                    f"Прокси {cfg.masked_url} не отвечает ({health.error or 'таймаут соединения'})."
+                )
+
+        if cfg.has_auth:
+            proxy_tunnel = AsyncProxyTunnel(cfg)
+            await proxy_tunnel.start()
+            browser_args.append(proxy_tunnel.to_chrome_arg())
+            logger.info(
+                "Поднят локальный туннель для %s: %s (целевой: %s)",
+                purpose,
+                proxy_tunnel.local_url,
+                cfg.masked_url,
+            )
+            return proxy_tunnel
+
+        browser_args.append(cfg.to_chrome_arg())
+        return None
+    except Exception as exc:
+        err_msg = f"Ошибка конфигурации прокси '{proxy}': {exc}"
+        logger.error(err_msg)
+        if callable(status_callback):
+            status_callback(f"❌ {err_msg}")
+        raise
+
+
+__all__ = ["AsyncProxyTunnel", "setup_browser_proxy"]

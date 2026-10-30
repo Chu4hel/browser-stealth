@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .adapters import get_playwright_proxy as get_playwright_proxy
     from .adapters import get_selenium_proxy as get_selenium_proxy
     from .adapters import nodriver_proxy as nodriver_proxy
+    from .cache import BoundedMemoryCacheBackend as BoundedMemoryCacheBackend
     from .cache import FileCacheBackend as FileCacheBackend
     from .extension import ChromeProxyExtension as ChromeProxyExtension
     from .models import ProxyConfig as ProxyConfig
@@ -22,9 +23,11 @@ if TYPE_CHECKING:
     from .storage import KeyringProxyStorage as KeyringProxyStorage
     from .storage import ProxySecretStorage as ProxySecretStorage
     from .tunnel import AsyncProxyTunnel as AsyncProxyTunnel
+    from .tunnel import setup_browser_proxy as setup_browser_proxy
 
 _LAZY_MAPPING = {
     "AsyncProxyTunnel": (".tunnel", "AsyncProxyTunnel"),
+    "BoundedMemoryCacheBackend": (".cache", "BoundedMemoryCacheBackend"),
     "ChromeProxyExtension": (".extension", "ChromeProxyExtension"),
     "FileCacheBackend": (".cache", "FileCacheBackend"),
     "KeyringProxyStorage": (".storage", "KeyringProxyStorage"),
@@ -42,6 +45,7 @@ _LAZY_MAPPING = {
     "get_selenium_proxy": (".adapters", "get_selenium_proxy"),
     "nodriver_proxy": (".adapters", "nodriver_proxy"),
     "parse_proxy": (".parser", "parse_proxy"),
+    "setup_browser_proxy": (".tunnel", "setup_browser_proxy"),
 }
 
 
@@ -59,6 +63,7 @@ def __dir__() -> list[str]:
 
 __all__ = [
     "AsyncProxyTunnel",
+    "BoundedMemoryCacheBackend",
     "ChromeProxyExtension",
     "FileCacheBackend",
     "KeyringProxyStorage",
@@ -76,4 +81,5 @@ __all__ = [
     "get_selenium_proxy",
     "nodriver_proxy",
     "parse_proxy",
+    "setup_browser_proxy",
 ]

@@ -341,6 +341,198 @@ def safe_extract_dict(val: object) -> dict[str, object]:
     return {}
 
 
+class ChromiumProcessManager:
+    """Управляет жизненным циклом процесса Chromium через nodriver, сетевым окружением и сессиями."""
+
+    def __init__(self) -> None:
+        """Инициализирует менеджер процессов."""
+        pass
+
+    async def launch(
+        self,
+        profile_path: Path | str,
+        headless: bool = False,
+        proxy_server: str | None = None,
+        profile_name: str | None = None,
+        tunnel_cls: type | None = None,
+        extra_args: list[str] | None = None,
+        browser_executable_path: Path | str | None = None,
+        sandbox: bool = True,
+    ) -> tuple[Any, Any | None]:
+        """Запускает процесс Chromium через nodriver с изоляцией профиля и поддержкой прокси.
+
+        Args:
+            profile_path: Путь к директории пользовательских данных Chromium (user-data-dir).
+            headless: Флаг запуска браузера в фоновом (headless) режиме.
+            proxy_server: Строка подключения к прокси (URL или host:port[:user:pass]).
+            profile_name: Человекочитаемое имя профиля для информационного логирования.
+            tunnel_cls: Опциональный класс создания прокси-туннеля (по умолчанию AsyncProxyTunnel).
+            extra_args: Дополнительные флаги командной строки браузера.
+            browser_executable_path: Пользовательский путь к бинарнику Chromium.
+            sandbox: Использовать ли песочницу Chrome (по умолчанию True).
+
+        Returns:
+            Кортеж из (nodriver.Browser, AsyncProxyTunnel | None).
+        """
+        p_path = Path(profile_path).resolve()
+        p_path.mkdir(parents=True, exist_ok=True)
+        user_data_str = str(p_path)
+
+        recommended_args = get_browser_launch_args()
+        browser_args: list[str] = [
+            arg
+            for arg in recommended_args
+            if arg not in ("--disable-blink-features=AutomationControlled", "--no-sandbox")
+        ]
+
+        for flag in (
+            "--disable-session-crashed-bubble",
+            "--hide-crash-restore-bubble",
+            "--restore-last-session=false",
+            "--no-first-run",
+            "--no-default-browser-check",
+        ):
+            if flag not in browser_args:
+                browser_args.append(flag)
+
+        if not headless and "--start-maximized" not in browser_args:
+            browser_args.append("--start-maximized")
+
+        if extra_args:
+            for e_arg in extra_args:
+                if e_arg not in browser_args:
+                    browser_args.append(e_arg)
+
+        proxy_tunnel = None
+        if proxy_server:
+            from browser_stealth.proxy.tunnel import setup_browser_proxy
+
+            proxy_tunnel = await setup_browser_proxy(
+                proxy=proxy_server,
+                browser_args=browser_args,
+                purpose=profile_name or p_path.name,
+                fail_on_dead=False,
+            )
+
+        if is_profile_locked(p_path):
+            logger.warning(
+                "Каталог профиля '%s' заблокирован существующим процессом Chromium. Санитизация...",
+                profile_name or p_path.name,
+            )
+        sanitize_profile_crash_state(p_path)
+
+        logger.info(
+            "Запуск Chromium через nodriver (профиль: %s, headless=%s)...",
+            profile_name or p_path.name,
+            headless,
+        )
+        uc = _get_nodriver_module()
+        try:
+            start_kwargs: dict[str, Any] = {
+                "user_data_dir": user_data_str,
+                "headless": headless,
+                "browser_args": browser_args,
+                "sandbox": sandbox,
+            }
+            if browser_executable_path is not None:
+                start_kwargs["browser_executable_path"] = str(browser_executable_path)
+
+            browser = await uc.start(**start_kwargs)
+
+            # Синхронизация targets
+            for _ in range(15):
+                try:
+                    if hasattr(browser, "update_targets") and callable(browser.update_targets):
+                        await browser.update_targets()
+                    tabs = getattr(browser, "tabs", None)
+                    if isinstance(tabs, list) and len(tabs) > 0:
+                        break
+                except Exception:
+                    pass
+                await asyncio.sleep(0.1)
+
+            # Очистка избыточных вкладок от прошлых сессий
+            current_tabs = [t for t in getattr(browser, "tabs", []) if hasattr(t, "close")]
+            if len(current_tabs) > 1:
+                logger.info(
+                    "Обнаружено %d открытых вкладок при запуске. Очистка старых сессионных вкладок...",
+                    len(current_tabs),
+                )
+                for extra_tab in current_tabs[1:]:
+                    await close_tab(extra_tab, timeout=3.0)
+
+            return browser, proxy_tunnel
+        except Exception:
+            sanitize_profile_crash_state(p_path)
+            if proxy_tunnel is not None:
+                try:
+                    await proxy_tunnel.stop()
+                except Exception:
+                    pass
+            raise
+
+    async def stop(
+        self,
+        browser: Any | None,
+        proxy_tunnel: Any | None = None,
+        profile_path: Path | str | None = None,
+    ) -> None:
+        """Корректно завершает работу процесса Chromium и сопутствующего прокси-туннеля.
+
+        Args:
+            browser: Активный экземпляр nodriver Browser.
+            proxy_tunnel: Активный туннель прокси (если использовался).
+            profile_path: Директория профиля для пост-санитизации состояния краша.
+        """
+        p_path = Path(profile_path).resolve() if profile_path is not None else None
+        if browser is not None:
+            logger.info("Закрытие сеанса Chromium...")
+            try:
+                # 1. Корректно закрываем CDP WebSocket соединение
+                if hasattr(browser, "aclose") and callable(browser.aclose):
+                    try:
+                        await asyncio.wait_for(browser.aclose(), timeout=2.0)
+                    except Exception:
+                        pass
+
+                # 2. Безопасно закрываем пайпы сабпроцесса до вызова stop()
+                proc = getattr(browser, "_process", None)
+                if proc is not None:
+                    for pipe in (
+                        getattr(proc, "stdin", None),
+                        getattr(proc, "stdout", None),
+                        getattr(proc, "stderr", None),
+                    ):
+                        if pipe is not None and hasattr(pipe, "close"):
+                            try:
+                                pipe.close()
+                            except Exception:
+                                pass
+                    transport = getattr(proc, "_transport", None)
+                    if transport is not None and hasattr(transport, "close"):
+                        try:
+                            transport.close()
+                        except Exception:
+                            pass
+
+                stop_fn = getattr(browser, "stop", None)
+                if callable(stop_fn):
+                    stop_fn()
+            except Exception as exc:
+                logger.debug("Ошибка при вызове browser.stop(): %s", exc)
+            finally:
+                if p_path is not None:
+                    sanitize_profile_crash_state(p_path)
+                await asyncio.sleep(0.1)
+
+        if proxy_tunnel is not None:
+            logger.info("Остановка туннеля аутентификации прокси...")
+            try:
+                await proxy_tunnel.stop()
+            except Exception as exc:
+                logger.debug("Ошибка остановки прокси-туннеля: %s", exc)
+
+
 from browser_stealth.concurrency.reaper import (
     IdleBrowserReaper,
     IdleBrowserReaperConfig,
@@ -353,6 +545,7 @@ __all__ = [
     "IdleBrowserReaperConfig",
     "IdleReaper",
     "IdleReaperConfig",
+    "ChromiumProcessManager",
     "close_tab",
     "is_profile_locked",
     "launch_nodriver",
