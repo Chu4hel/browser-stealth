@@ -94,5 +94,11 @@ def test_makenative_v8_node_runtime_cloaking() -> None:
     );
     """
 
-    res = subprocess.run(["node", "-e", node_runner], capture_output=True, text=True, check=False)
+    res = subprocess.run(
+        ["node"],
+        input=node_runner,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     assert res.returncode == 0, f"Ошибка исполнения JS в Node.js:\n{res.stderr}"

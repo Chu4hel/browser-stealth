@@ -32,6 +32,7 @@ def _get_antidetect_js(
     is_ios: bool = False,
     orientation: dict[str, Any] | None = None,
     locale: str = "en-US",
+    user_agent: str | None = None,
 ) -> str:
     """Генерирует JavaScript-инъекцию для скрытия признаков автоматизации браузера с заданными параметрами."""
     vendor_js = json.dumps(webgl_vendor)
@@ -47,6 +48,7 @@ def _get_antidetect_js(
     dpr_js = json.dumps(device_pixel_ratio)
     devices_js = json.dumps(media_devices) if media_devices is not None else "null"
     locale_js = json.dumps(locale)
+    ua_js = json.dumps(user_agent) if user_agent is not None else "null"
     is_mobile_js = "true" if is_mobile else "false"
     max_touch_points_val = int(max_touch_points if (max_touch_points > 0 or not is_mobile) else 5)
     orientation_js = json.dumps(orientation) if orientation is not None else "null"
@@ -55,6 +57,36 @@ def _get_antidetect_js(
     motion_block = get_motion_js() if (has_touch or is_mobile) else ""
     orientation_block = get_orientation_js(orientation_js, is_mobile_js)
     ios_block = get_ios_js() if is_ios else ""
+
+    if user_agent is not None:
+        worker_ua_block = f"""
+            try {{
+                Object.defineProperty(navigator, 'userAgent', {{
+                    get: () => {ua_js},
+                    enumerable: true,
+                    configurable: true
+                }});
+            }} catch(e) {{}}
+        """
+        main_ua_block = f"""
+        try {{
+            Object.defineProperty(navProto, 'userAgent', {{
+                get: makeNative(() => {ua_js}, 'get userAgent'),
+                enumerable: true,
+                configurable: true,
+            }});
+        }} catch (e) {{}}
+        try {{
+            Object.defineProperty(navigator, 'userAgent', {{
+                get: makeNative(() => {ua_js}, 'get userAgent'),
+                enumerable: true,
+                configurable: true,
+            }});
+        }} catch (e) {{}}
+        """
+    else:
+        worker_ua_block = ""
+        main_ua_block = ""
 
     return f"""(function() {{
     // 0. Реестр маскировки функций под нативные [native code] через WeakMap и Proxy над Function.prototype.toString
@@ -227,30 +259,61 @@ def _get_antidetect_js(
     try {{
         const workerPreamble = `
             try {{
-                const navProto = Navigator.prototype || Object.getPrototypeOf(navigator);
-                delete navProto.webdriver;
-                delete navigator.webdriver;
-                Object.defineProperty(navProto, 'webdriver', {{
-                    get: () => undefined,
-                    enumerable: true,
-                    configurable: true
-                }});
+                const navProto = (typeof Navigator !== 'undefined' && Navigator.prototype) || (typeof navigator !== 'undefined' && Object.getPrototypeOf(navigator));
+                if (navProto) {{
+                    try {{ delete navProto.webdriver; }} catch(e) {{}}
+                    try {{
+                        Object.defineProperty(navProto, 'webdriver', {{
+                            get: () => undefined,
+                            enumerable: true,
+                            configurable: true
+                        }});
+                    }} catch(e) {{}}
+                }}
+                if (typeof navigator !== 'undefined') {{
+                    try {{ delete navigator.webdriver; }} catch(e) {{}}
+                    try {{
+                        Object.defineProperty(navigator, 'webdriver', {{
+                            get: () => undefined,
+                            enumerable: true,
+                            configurable: true
+                        }});
+                    }} catch(e) {{}}
+                    try {{
+                        Object.defineProperty(navigator, 'hardwareConcurrency', {{
+                            get: () => {concurrency_js},
+                            enumerable: true,
+                            configurable: true
+                        }});
+                    }} catch(e) {{}}
+                    try {{
+                        Object.defineProperty(navigator, 'deviceMemory', {{
+                            get: () => {memory_js},
+                            enumerable: true,
+                            configurable: true
+                        }});
+                    }} catch(e) {{}}
+                    {worker_ua_block}
+                }}
             }} catch (e) {{}}
         `;
         if (typeof window !== 'undefined' && window.Worker) {{
             const OriginalWorker = window.Worker;
             const PatchedWorker = function Worker(scriptURL, options) {{
-                if (typeof scriptURL === 'string') {{
-                    try {{
-                        const blobContent = `${{workerPreamble}}\\nimportScripts("${{scriptURL}}");`;
-                        const blob = new Blob([blobContent], {{ type: 'application/javascript' }});
-                        const blobURL = URL.createObjectURL(blob);
-                        return new OriginalWorker(blobURL, options);
-                    }} catch (e) {{
-                        return new OriginalWorker(scriptURL, options);
-                    }}
+                try {{
+                    const urlStr = (typeof scriptURL === 'object' && scriptURL !== null && 'href' in scriptURL)
+                        ? scriptURL.href
+                        : String(scriptURL);
+                    const isModule = Boolean(options && options.type === 'module');
+                    const loaderCode = isModule
+                        ? `${{workerPreamble}}\\nimport "${{urlStr}}";`
+                        : `${{workerPreamble}}\\nimportScripts("${{urlStr}}");`;
+                    const blob = new Blob([loaderCode], {{ type: 'application/javascript' }});
+                    const blobURL = URL.createObjectURL(blob);
+                    return new OriginalWorker(blobURL, options);
+                }} catch (e) {{
+                    return new OriginalWorker(scriptURL, options);
                 }}
-                return new OriginalWorker(scriptURL, options);
             }};
             PatchedWorker.prototype = OriginalWorker.prototype;
             window.Worker = makeNative(PatchedWorker, 'Worker');
@@ -258,20 +321,208 @@ def _get_antidetect_js(
         if (typeof window !== 'undefined' && window.SharedWorker) {{
             const OriginalSharedWorker = window.SharedWorker;
             const PatchedSharedWorker = function SharedWorker(scriptURL, options) {{
-                if (typeof scriptURL === 'string') {{
-                    try {{
-                        const blobContent = `${{workerPreamble}}\\nimportScripts("${{scriptURL}}");`;
-                        const blob = new Blob([blobContent], {{ type: 'application/javascript' }});
-                        const blobURL = URL.createObjectURL(blob);
-                        return new OriginalSharedWorker(blobURL, options);
-                    }} catch (e) {{
-                        return new OriginalSharedWorker(scriptURL, options);
-                    }}
+                try {{
+                    const urlStr = (typeof scriptURL === 'object' && scriptURL !== null && 'href' in scriptURL)
+                        ? scriptURL.href
+                        : String(scriptURL);
+                    const isModule = Boolean(options && options.type === 'module');
+                    const loaderCode = isModule
+                        ? `${{workerPreamble}}\\nimport "${{urlStr}}";`
+                        : `${{workerPreamble}}\\nimportScripts("${{urlStr}}");`;
+                    const blob = new Blob([loaderCode], {{ type: 'application/javascript' }});
+                    const blobURL = URL.createObjectURL(blob);
+                    return new OriginalSharedWorker(blobURL, options);
+                }} catch (e) {{
+                    return new OriginalSharedWorker(scriptURL, options);
                 }}
-                return new OriginalSharedWorker(scriptURL, options);
             }};
             PatchedSharedWorker.prototype = OriginalSharedWorker.prototype;
             window.SharedWorker = makeNative(PatchedSharedWorker, 'SharedWorker');
+        }}
+    }} catch (e) {{}}
+
+    // 0.4. Синхронная каскадная изоляция дочерних контекстов (Iframe Cross-realm inspection)
+    const patchedWindows = new WeakSet();
+    const webdriverGetter = makeNative(() => undefined, 'get webdriver');
+    const pluginsList = [
+        {{ name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
+        {{ name: 'Chrome PDF Viewer', filename: 'mhjfbmdmgglogagaboenashesapgbbbi', description: 'Google Chrome PDF Viewer' }}
+    ];
+    const pluginsGetter = makeNative(() => pluginsList, 'get plugins');
+
+    const patchSubWindow = (subWin) => {{
+        if (!subWin) return;
+        try {{
+            if (patchedWindows.has(subWin)) return;
+            patchedWindows.add(subWin);
+        }} catch (e) {{}}
+
+        try {{
+            if (subWin.Function && subWin.Function.prototype) {{
+                try {{
+                    Object.defineProperty(subWin.Function.prototype, 'toString', {{
+                        value: patchedToString,
+                        writable: true,
+                        configurable: true,
+                        enumerable: false
+                    }});
+                }} catch (e) {{
+                    try {{ subWin.Function.prototype.toString = patchedToString; }} catch (e2) {{}}
+                }}
+            }}
+
+            const subNavProto = (subWin.Navigator && subWin.Navigator.prototype) || (subWin.navigator && Object.getPrototypeOf(subWin.navigator));
+            if (subNavProto) {{
+                try {{ delete subNavProto.webdriver; }} catch (e) {{}}
+                try {{
+                    Object.defineProperty(subNavProto, 'webdriver', {{
+                        get: webdriverGetter,
+                        enumerable: true,
+                        configurable: true
+                    }});
+                }} catch (e) {{}}
+            }}
+            if (subWin.navigator) {{
+                try {{ delete subWin.navigator.webdriver; }} catch (e) {{}}
+                try {{
+                    Object.defineProperty(subWin.navigator, 'webdriver', {{
+                        get: webdriverGetter,
+                        enumerable: true,
+                        configurable: true
+                    }});
+                }} catch (e) {{}}
+
+                try {{
+                    Object.defineProperty(subWin.navigator, 'hardwareConcurrency', {{
+                        get: makeNative(() => {concurrency_js}, 'get hardwareConcurrency'),
+                        enumerable: true,
+                        configurable: true
+                    }});
+                }} catch (e) {{}}
+                try {{
+                    Object.defineProperty(subWin.navigator, 'deviceMemory', {{
+                        get: makeNative(() => {memory_js}, 'get deviceMemory'),
+                        enumerable: true,
+                        configurable: true
+                    }});
+                }} catch (e) {{}}
+                try {{
+                    Object.defineProperty(subWin.navigator, 'plugins', {{
+                        get: pluginsGetter,
+                        enumerable: true,
+                        configurable: true
+                    }});
+                }} catch (e) {{}}
+
+                if ({ua_js}) {{
+                    try {{
+                        Object.defineProperty(subWin.navigator, 'userAgent', {{
+                            get: makeNative(() => {ua_js}, 'get userAgent'),
+                            enumerable: true,
+                            configurable: true
+                        }});
+                    }} catch (e) {{}}
+                }}
+            }}
+
+            if (typeof window !== 'undefined' && window.chrome) {{
+                try {{
+                    subWin.chrome = window.chrome;
+                }} catch (e) {{}}
+            }}
+
+            if (!isMinimal) {{
+                const subContexts = [];
+                if (subWin.WebGLRenderingContext) subContexts.push(subWin.WebGLRenderingContext);
+                if (subWin.WebGL2RenderingContext) subContexts.push(subWin.WebGL2RenderingContext);
+                for (const ctx of subContexts) {{
+                    try {{
+                        const origGetParam = ctx.prototype.getParameter;
+                        const patchedGetParam = function getParameter(parameter) {{
+                            if (parameter === 37445) return {vendor_js};
+                            if (parameter === 37446) return {renderer_js};
+                            return origGetParam.apply(this, arguments);
+                        }};
+                        ctx.prototype.getParameter = makeNative(patchedGetParam, 'getParameter');
+                    }} catch (e) {{}}
+                }}
+            }}
+        }} catch (err) {{}}
+    }};
+
+    // Перехват дескрипторов contentWindow и contentDocument у HTMLIFrameElement.prototype
+    try {{
+        if (typeof HTMLIFrameElement !== 'undefined' && HTMLIFrameElement.prototype) {{
+            const iframeProto = HTMLIFrameElement.prototype;
+
+            const origContentWindowDesc = Object.getOwnPropertyDescriptor(iframeProto, 'contentWindow');
+            if (origContentWindowDesc && typeof origContentWindowDesc.get === 'function') {{
+                const origGetContentWindow = origContentWindowDesc.get;
+                const patchedGetContentWindow = function contentWindow() {{
+                    const win = Reflect.apply(origGetContentWindow, this, []);
+                    if (win) {{
+                        patchSubWindow(win);
+                    }}
+                    return win;
+                }};
+                Object.defineProperty(iframeProto, 'contentWindow', {{
+                    get: makeNative(patchedGetContentWindow, 'get contentWindow'),
+                    set: origContentWindowDesc.set,
+                    configurable: true,
+                    enumerable: true
+                }});
+            }}
+
+            const origContentDocumentDesc = Object.getOwnPropertyDescriptor(iframeProto, 'contentDocument');
+            if (origContentDocumentDesc && typeof origContentDocumentDesc.get === 'function') {{
+                const origGetContentDocument = origContentDocumentDesc.get;
+                const patchedGetContentDocument = function contentDocument() {{
+                    const doc = Reflect.apply(origGetContentDocument, this, []);
+                    if (doc && doc.defaultView) {{
+                        patchSubWindow(doc.defaultView);
+                    }}
+                    return doc;
+                }};
+                Object.defineProperty(iframeProto, 'contentDocument', {{
+                    get: makeNative(patchedGetContentDocument, 'get contentDocument'),
+                    set: origContentDocumentDesc.set,
+                    configurable: true,
+                    enumerable: true
+                }});
+            }}
+        }}
+    }} catch (e) {{}}
+
+    // Синхронный перехват методов вставки iframe в DOM
+    try {{
+        if (typeof Node !== 'undefined' && Node.prototype) {{
+            const origAppendChild = Node.prototype.appendChild;
+            Node.prototype.appendChild = function appendChild(node) {{
+                const res = origAppendChild.apply(this, arguments);
+                if (node && (node.nodeName === 'IFRAME' || node.tagName === 'IFRAME')) {{
+                    try {{
+                        if (node.contentWindow) {{
+                            patchSubWindow(node.contentWindow);
+                        }}
+                    }} catch (e) {{}}
+                }}
+                return res;
+            }};
+            makeNative(Node.prototype.appendChild, 'appendChild');
+
+            const origInsertBefore = Node.prototype.insertBefore;
+            Node.prototype.insertBefore = function insertBefore(newNode, refNode) {{
+                const res = origInsertBefore.apply(this, arguments);
+                if (newNode && (newNode.nodeName === 'IFRAME' || newNode.tagName === 'IFRAME')) {{
+                    try {{
+                        if (newNode.contentWindow) {{
+                            patchSubWindow(newNode.contentWindow);
+                        }}
+                    }} catch (e) {{}}
+                }}
+                return res;
+            }};
+            makeNative(Node.prototype.insertBefore, 'insertBefore');
         }}
     }} catch (e) {{}}
 
@@ -295,13 +546,14 @@ def _get_antidetect_js(
         delete navigator.webdriver;
     }} catch (e) {{}}
     try {{
-        const webdriverGetter = makeNative(() => undefined, 'get webdriver');
         Object.defineProperty(navProto, 'webdriver', {{
             get: webdriverGetter,
             enumerable: true,
             configurable: true,
         }});
     }} catch (e) {{}}
+
+    {main_ua_block}
 
     const isMinimal = {minimal_js};
 
@@ -363,12 +615,6 @@ def _get_antidetect_js(
 
     // 4. Эмуляция navigator.plugins
     try {{
-        const pluginsGetter = makeNative(() => {{
-            return [
-                {{ name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
-                {{ name: 'Chrome PDF Viewer', filename: 'mhjfbmdmgglogagaboenashesapgbbbi', description: 'Google Chrome PDF Viewer' }}
-            ];
-        }}, 'get plugins');
         Object.defineProperty(navigator, 'plugins', {{
             get: pluginsGetter,
             enumerable: true,
@@ -478,26 +724,7 @@ def _get_antidetect_js(
                 element.addEventListener('load', function() {{
                     try {{
                         if (element.contentWindow) {{
-                            const cw = element.contentWindow;
-                            if (cw.Function && cw.Function.prototype) {{
-                                try {{
-                                    Object.defineProperty(cw.Function.prototype, 'toString', {{
-                                        value: window.Function.prototype.toString,
-                                        writable: true,
-                                        configurable: true,
-                                        enumerable: false
-                                    }});
-                                }} catch (errProto) {{
-                                    cw.Function.prototype.toString = window.Function.prototype.toString;
-                                }}
-                            }}
-                            if (cw.navigator) {{
-                                Object.defineProperty(cw.navigator, 'webdriver', {{
-                                    get: makeNative(() => undefined, 'get webdriver'),
-                                    enumerable: true,
-                                    configurable: true
-                                }});
-                            }}
+                            patchSubWindow(element.contentWindow);
                         }}
                     }} catch (err) {{}}
                 }});

@@ -467,6 +467,7 @@ class AntidetectConfig(BaseModel):
             is_ios=self.is_ios,
             orientation=self.orientation,
             locale=self.locale,
+            user_agent=self.user_agent,
         )
 
     async def apply_to_nodriver(self, tab: Any) -> None:
