@@ -1,5 +1,6 @@
 """Тяжелые сквозные (E2E) тесты против внешних стендов детекта ботов (Sannysoft, Cloudflare, Browserleaks).
 
+Поддерживают использование прокси из переменных окружения (TEST_PROXY, E2E_PROXY, PROXY_URL) или файла .env.
 Запускаются отдельно с маркером 'heavy':
     uv run pytest -m heavy
 """
@@ -28,14 +29,21 @@ from browser_stealth.launchers.nodriver import (
 MAX_TEST_TIMEOUT = 25.0
 
 
-def _is_url_reachable(url: str, timeout: float = 3.0) -> bool:
-    """Проверяет доступность удаленного тестового стенда по сети с коротким таймаутом."""
+def _is_url_reachable(url: str, timeout: float = 3.0, proxy: str | None = None) -> bool:
+    """Проверяет доступность удаленного тестового стенда по сети (с поддержкой прокси)."""
     try:
+        handlers: list[Any] = []
+        if proxy:
+            handlers.append(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
+            opener = urllib.request.build_opener(*handlers)
+        else:
+            opener = urllib.request.build_opener()
+
         req = urllib.request.Request(
             url,
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
         )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with opener.open(req, timeout=timeout) as resp:
             return bool(resp.status in (200, 301, 302, 403))
     except Exception:
         return False
@@ -44,15 +52,15 @@ def _is_url_reachable(url: str, timeout: float = 3.0) -> bool:
 @pytest.mark.heavy
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_sannysoft_bot_detector_live() -> None:
+async def test_sannysoft_bot_detector_live(e2e_proxy: str | None) -> None:
     """Проверяет прохождение тестов на https://bot.sannysoft.com/ в реальном браузере nodriver."""
     target_url = "https://bot.sannysoft.com/"
-    if not _is_url_reachable(target_url):
+    if not _is_url_reachable(target_url, proxy=e2e_proxy):
         pytest.skip(f"Стенд {target_url} недоступен по сети")
 
     async def _run() -> None:
         config = AntidetectConfig.preset_stealth_nodriver()
-        async with nodriver_session(config=config, headless=True) as browser:
+        async with nodriver_session(config=config, headless=True, proxy=e2e_proxy) as browser:
             tab = await safe_get_or_open_tab(browser, target_url, timeout=8.0)
             await config.apply_to_nodriver(tab)
 
@@ -94,18 +102,18 @@ async def test_sannysoft_bot_detector_live() -> None:
             )
 
     try:
-        await asyncio.wait_for(_run(), timeout=15.0)
+        await asyncio.wait_for(_run(), timeout=MAX_TEST_TIMEOUT)
     except TimeoutError:
-        pytest.skip("Таймаут (15с) при ожидании ответа Cloudflare Turnstile стенда nowsecure.nl")
+        pytest.skip("Таймаут ожидания загрузки bot.sannysoft.com")
 
 
 @pytest.mark.heavy
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_browserleaks_webgl_vendor_override_live() -> None:
+async def test_browserleaks_webgl_vendor_override_live(e2e_proxy: str | None) -> None:
     """Проверяет корректность подмены WebGL параметров на https://browserleaks.com/webgl."""
     target_url = "https://browserleaks.com/webgl"
-    if not _is_url_reachable(target_url):
+    if not _is_url_reachable(target_url, proxy=e2e_proxy):
         pytest.skip(f"Стенд {target_url} недоступен по сети")
 
     async def _run() -> None:
@@ -119,7 +127,7 @@ async def test_browserleaks_webgl_vendor_override_live() -> None:
             stealth_minimal=False,
         )
 
-        async with nodriver_session(config=config, headless=True) as browser:
+        async with nodriver_session(config=config, headless=True, proxy=e2e_proxy) as browser:
             tab = getattr(browser, "main_tab", None)
             if tab is None:
                 tab = await safe_get_or_open_tab(browser, "about:blank", timeout=8.0)
@@ -147,23 +155,23 @@ async def test_browserleaks_webgl_vendor_override_live() -> None:
             assert webgl_info.get("renderer") == custom_renderer
 
     try:
-        await asyncio.wait_for(_run(), timeout=15.0)
+        await asyncio.wait_for(_run(), timeout=MAX_TEST_TIMEOUT)
     except TimeoutError:
-        pytest.skip("Таймаут (15с) при ожидании ответа Cloudflare Turnstile стенда nowsecure.nl")
+        pytest.skip("Таймаут ожидания ответа browserleaks.com")
 
 
 @pytest.mark.heavy
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_nowsecure_turnstile_challenge_live() -> None:
+async def test_nowsecure_turnstile_challenge_live(e2e_proxy: str | None) -> None:
     """Проверяет обнаружение и прохождение защиты Cloudflare Turnstile на https://nowsecure.nl/."""
     target_url = "https://nowsecure.nl/"
-    if not _is_url_reachable(target_url):
+    if not _is_url_reachable(target_url, proxy=e2e_proxy):
         pytest.skip(f"Стенд {target_url} недоступен по сети")
 
     async def _run() -> None:
         config = AntidetectConfig.preset_stealth_nodriver()
-        async with nodriver_session(config=config, headless=True) as browser:
+        async with nodriver_session(config=config, headless=True, proxy=e2e_proxy) as browser:
             tab = await safe_get_or_open_tab(browser, target_url, timeout=8.0)
             await config.apply_to_nodriver(tab)
 

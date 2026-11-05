@@ -8,6 +8,7 @@ Pytest плагин и фикстуры для автотестирования 
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -124,3 +125,46 @@ def mock_selenium_driver() -> Callable[..., MockSeleniumDriver]:
         return MockSeleniumDriver(html)
 
     return _factory
+
+
+def load_env_file(path: Path | None = None) -> None:
+    """Загружает переменные из .env файла в os.environ (без перезаписи существующих).
+
+    Позволяет использовать секреты локально в файле .env или в CI/CD через GitHub Secrets.
+    """
+    if path is None:
+        path = Path.cwd() / ".env"
+    if not path.is_file():
+        return
+    try:
+        with open(path, encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("export "):
+                    line = line[7:].strip()
+                if "=" in line:
+                    key, _, val = line.partition("=")
+                    key = key.strip()
+                    val = val.strip().strip("'\"")
+                    if key and key not in os.environ:
+                        os.environ[key] = val
+    except Exception:
+        pass
+
+
+def get_e2e_proxy() -> str | None:
+    """Возвращает адрес прокси для E2E тестов из переменных окружения или .env файла."""
+    load_env_file()
+    for var_name in ("TEST_PROXY", "E2E_PROXY", "PROXY_URL"):
+        val = os.environ.get(var_name)
+        if val and val.strip():
+            return val.strip()
+    return None
+
+
+@pytest.fixture(scope="session")
+def e2e_proxy() -> str | None:
+    """Сессионная фикстура прокси для E2E и Heavy тестов."""
+    return get_e2e_proxy()
