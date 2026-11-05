@@ -158,7 +158,7 @@ async def _detect_cf_turnstile_cdp_fallback(tab: Any) -> dict[str, Any] | None:
         try:
             res = find_method(sel)
             if inspect.isawaitable(res):
-                el = await res
+                el = await asyncio.wait_for(res, timeout=1.5)
             else:
                 el = res
 
@@ -169,7 +169,7 @@ async def _detect_cf_turnstile_cdp_fallback(tab: Any) -> dict[str, Any] | None:
             if callable(get_pos):
                 pos_res = get_pos()
                 if inspect.isawaitable(pos_res):
-                    pos = await pos_res
+                    pos = await asyncio.wait_for(pos_res, timeout=1.5)
                 else:
                     pos = pos_res
 

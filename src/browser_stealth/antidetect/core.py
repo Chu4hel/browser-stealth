@@ -344,7 +344,11 @@ async def apply_antidetect_nodriver(
         )
     )
     # Двойная инъекция:
-    # 3. Регистрация на новые документы (будущие навигации, редиректы, перезагрузки)
+    # 3. Включение домена Page и регистрация на новые документы (будущие навигации, редиректы, перезагрузки)
+    try:
+        await tab.send(page.enable())
+    except Exception:
+        pass
     await tab.send(page.add_script_to_evaluate_on_new_document(source=script))
 
     # 4. Мгновенное применение к уже открытой текущей странице (если вкладка активна)

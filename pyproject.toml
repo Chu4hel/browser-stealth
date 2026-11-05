@@ -64,6 +64,7 @@ python_files = ["test_*.py"]
 asyncio_default_fixture_loop_scope = "function"
 markers = [
     "e2e: End-to-end integration and antidetect tests",
+    "heavy: Slow live network tests against external anti-bot detection suites (CreepJS, Sannysoft, Turnstile)",
 ]
 
 [tool.ruff]
