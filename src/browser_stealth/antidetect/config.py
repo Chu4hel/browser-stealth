@@ -103,6 +103,10 @@ class AntidetectConfig(BaseModel):
         default=None,
         description="Параметры ориентации экрана (type, angle).",
     )
+    locale: str = Field(
+        default="en-US",
+        description="Локаль браузера (например, 'en-US', 'ru-RU').",
+    )
 
     @classmethod
     def preset_stealth_nodriver(
@@ -462,6 +466,7 @@ class AntidetectConfig(BaseModel):
             max_touch_points=self.max_touch_points,
             is_ios=self.is_ios,
             orientation=self.orientation,
+            locale=self.locale,
         )
 
     async def apply_to_nodriver(self, tab: Any) -> None:

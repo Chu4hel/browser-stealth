@@ -167,6 +167,7 @@ class ProceduralSynthesizer:
             seed=seed,
             os=self.os_target,
             browser="chrome",
+            locale=self.locale,
             user_agent=user_agent,
             webgl=WebGLFingerprint(vendor=webgl_vendor, renderer=webgl_renderer_str),
             screen=ScreenFingerprint(

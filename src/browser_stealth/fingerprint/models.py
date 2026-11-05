@@ -103,6 +103,7 @@ class FingerprintProfile(BaseModel):
     )
     os: str = Field(default="windows", description="Целевая операционная система.")
     browser: str = Field(default="chrome", description="Эмулируемый браузер.")
+    locale: str = Field(default="en-US", description="Локаль операционной системы.")
     user_agent: str = Field(
         default=(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -162,6 +163,7 @@ class FingerprintProfile(BaseModel):
             media_devices=[d.model_dump() for d in self.media_devices]
             if self.media_devices
             else None,
+            locale=self.locale,
         )
 
     def to_dict(self) -> dict[str, Any]:

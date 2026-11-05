@@ -31,6 +31,7 @@ def _get_antidetect_js(
     max_touch_points: int = 0,
     is_ios: bool = False,
     orientation: dict[str, Any] | None = None,
+    locale: str = "en-US",
 ) -> str:
     """Генерирует JavaScript-инъекцию для скрытия признаков автоматизации браузера с заданными параметрами."""
     vendor_js = json.dumps(webgl_vendor)
@@ -45,6 +46,7 @@ def _get_antidetect_js(
     screen_avail_h_js = json.dumps(screen_avail_height)
     dpr_js = json.dumps(device_pixel_ratio)
     devices_js = json.dumps(media_devices) if media_devices is not None else "null"
+    locale_js = json.dumps(locale)
     is_mobile_js = "true" if is_mobile else "false"
     max_touch_points_val = int(max_touch_points if (max_touch_points > 0 or not is_mobile) else 5)
     orientation_js = json.dumps(orientation) if orientation is not None else "null"
@@ -572,11 +574,43 @@ def _get_antidetect_js(
         }}
     }} catch (e) {{}}
 
-    // 10. Эмуляция медиа-устройств (navigator.mediaDevices.enumerateDevices)
+    // 10. Эмуляция медиа-устройств (navigator.mediaDevices.enumerateDevices) с учетом локали и разрешений
     try {{
         if (typeof navigator !== 'undefined') {{
+            if (!navigator.mediaDevices) {{
+                navigator.mediaDevices = {{}};
+            }}
+
+            let mediaAccessGranted = false;
+
+            // Отслеживаем предоставление разрешений через getUserMedia
+            if (navigator.mediaDevices.getUserMedia) {{
+                const origGetUserMedia = navigator.mediaDevices.getUserMedia;
+                navigator.mediaDevices.getUserMedia = makeNative(function getUserMedia(constraints) {{
+                    mediaAccessGranted = true;
+                    if (origGetUserMedia) {{
+                        return origGetUserMedia.apply(this, arguments);
+                    }}
+                    return Promise.reject(new DOMException('Permission denied', 'NotAllowedError'));
+                }}, 'getUserMedia');
+            }}
+
             const rawDevices = {devices_js};
-            const defaultFakeDevices = [
+            const defaultDevicesEn = [
+                {{
+                    deviceId: 'default',
+                    kind: 'audioinput',
+                    label: 'Internal Microphone (Realtek High Definition Audio)',
+                    groupId: 'group_audio_default'
+                }},
+                {{
+                    deviceId: 'default',
+                    kind: 'audiooutput',
+                    label: 'Speakers (Realtek High Definition Audio)',
+                    groupId: 'group_audio_default'
+                }}
+            ];
+            const defaultDevicesRu = [
                 {{
                     deviceId: 'default',
                     kind: 'audioinput',
@@ -590,18 +624,19 @@ def _get_antidetect_js(
                     groupId: 'group_audio_default'
                 }}
             ];
+
+            const activeLocale = ({locale_js} || (navigator.language || (navigator.languages && navigator.languages[0]) || 'en-US')).toLowerCase();
+            const isRuLocale = activeLocale.startsWith('ru');
+            const defaultFakeDevices = isRuLocale ? defaultDevicesRu : defaultDevicesEn;
+
             const targetDevices = Array.isArray(rawDevices) && rawDevices.length > 0 ? rawDevices : defaultFakeDevices;
 
-            if (!navigator.mediaDevices) {{
-                navigator.mediaDevices = {{}};
-            }}
-
-            const makeMediaDeviceInfo = (d) => {{
+            const makeMediaDeviceInfo = (d, granted) => {{
                 return {{
-                    deviceId: d.deviceId || d.device_id || 'default',
+                    deviceId: granted ? (d.deviceId || d.device_id || 'default') : '',
                     kind: d.kind || 'audiooutput',
-                    label: d.label || '',
-                    groupId: d.groupId || d.group_id || 'default',
+                    label: granted ? (d.label || '') : '',
+                    groupId: granted ? (d.groupId || d.group_id || 'default') : '',
                     toJSON: function toJSON() {{
                         return {{
                             deviceId: this.deviceId,
@@ -618,14 +653,19 @@ def _get_antidetect_js(
                 if (origEnumerate) {{
                     return origEnumerate.apply(this, arguments).then((devices) => {{
                         if (Array.isArray(devices) && devices.length > 0) {{
-                            return devices;
+                            const hasRealLabels = devices.some((d) => d && typeof d.label === 'string' && d.label.length > 0);
+                            if (hasRealLabels) {{
+                                mediaAccessGranted = true;
+                                return devices;
+                            }}
+                            return targetDevices.map((d) => makeMediaDeviceInfo(d, mediaAccessGranted));
                         }}
-                        return targetDevices.map(makeMediaDeviceInfo);
+                        return targetDevices.map((d) => makeMediaDeviceInfo(d, mediaAccessGranted));
                     }}).catch(() => {{
-                        return targetDevices.map(makeMediaDeviceInfo);
+                        return targetDevices.map((d) => makeMediaDeviceInfo(d, mediaAccessGranted));
                     }});
                 }}
-                return Promise.resolve(targetDevices.map(makeMediaDeviceInfo));
+                return Promise.resolve(targetDevices.map((d) => makeMediaDeviceInfo(d, mediaAccessGranted)));
             }};
 
             navigator.mediaDevices.enumerateDevices = makeNative(fakeEnumerateDevices, 'enumerateDevices');
