@@ -43,6 +43,12 @@ class ScreenFingerprint(BaseModel):
     avail_height: int = Field(
         default=1040, description="Доступная высота экрана за вычетом панели задач."
     )
+    avail_top: int = Field(
+        default=0, description="Отступ доступной области экрана сверху (меню/панель задач)."
+    )
+    avail_left: int = Field(
+        default=0, description="Отступ доступной области экрана слева (панель/док)."
+    )
     device_pixel_ratio: float = Field(
         default=1.0, description="Масштабирование дисплея (window.devicePixelRatio)."
     )
@@ -190,7 +196,10 @@ class FingerprintProfile(BaseModel):
             user_agent=self.user_agent,
             screen_width=self.screen.width,
             screen_height=self.screen.height,
+            screen_avail_width=self.screen.avail_width,
             screen_avail_height=self.screen.avail_height,
+            screen_avail_top=self.screen.avail_top,
+            screen_avail_left=self.screen.avail_left,
             device_pixel_ratio=self.screen.device_pixel_ratio,
             media_devices=[d.model_dump() for d in self.media_devices]
             if self.media_devices

@@ -125,14 +125,20 @@ class ProceduralSynthesizer:
 
         if is_macos:
             taskbar_height = 25  # Верхняя строка меню macOS
+            avail_top = 25
+            avail_left = 0
         elif is_linux:
             taskbar_height = 32  # Панель дистрибутивов Linux
+            avail_top = 32
+            avail_left = 0
         else:
             # Высота панели задач Taskbar на Windows
             if pixel_ratio > 1.0:
                 taskbar_height = rng.choice([48, 60])
             else:
                 taskbar_height = 40
+            avail_top = 0
+            avail_left = 0
 
         avail_h = screen_h - taskbar_height
         avail_w = screen_w
@@ -261,6 +267,8 @@ class ProceduralSynthesizer:
                 height=screen_h,
                 avail_width=avail_w,
                 avail_height=avail_h,
+                avail_top=avail_top,
+                avail_left=avail_left,
                 device_pixel_ratio=pixel_ratio,
                 color_depth=24,
             ),

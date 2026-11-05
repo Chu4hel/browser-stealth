@@ -24,6 +24,9 @@ def _get_antidetect_js(
     screen_width: int | None = None,
     screen_height: int | None = None,
     screen_avail_height: int | None = None,
+    screen_avail_width: int | None = None,
+    screen_avail_top: int | None = None,
+    screen_avail_left: int | None = None,
     device_pixel_ratio: float | None = None,
     media_devices: list[dict[str, Any]] | None = None,
     is_mobile: bool = False,
@@ -45,6 +48,9 @@ def _get_antidetect_js(
     screen_w_js = json.dumps(screen_width)
     screen_h_js = json.dumps(screen_height)
     screen_avail_h_js = json.dumps(screen_avail_height)
+    screen_avail_w_js = json.dumps(screen_avail_width)
+    screen_avail_top_js = json.dumps(screen_avail_top)
+    screen_avail_left_js = json.dumps(screen_avail_left)
     dpr_js = json.dumps(device_pixel_ratio)
     devices_js = json.dumps(media_devices) if media_devices is not None else "null"
     locale_js = json.dumps(locale)
@@ -636,32 +642,45 @@ def _get_antidetect_js(
         }});
     }} catch (e) {{}}
 
-    // 5.1. Эмуляция размеров окна и экрана (outerWidth, outerHeight, availHeight)
+    // 5.1. Эмуляция размеров окна (outerWidth, outerHeight, screenX, screenY)
     try {{
         if (typeof window !== 'undefined') {{
-            if (window.outerWidth === 0 || window.outerHeight === 0 || window.outerHeight === window.innerHeight) {{
-                const innerH = window.innerHeight || 800;
-                const innerW = window.innerWidth || 1280;
-                Object.defineProperty(window, 'outerWidth', {{
-                    get: makeNative(() => innerW, 'get outerWidth'),
-                    configurable: true,
-                    enumerable: true
-                }});
-                Object.defineProperty(window, 'outerHeight', {{
-                    get: makeNative(() => innerH + 85, 'get outerHeight'),
-                    configurable: true,
-                    enumerable: true
-                }});
-            }}
-            if (typeof screen !== 'undefined') {{
-                if (!screen.availHeight || screen.availHeight === screen.height) {{
-                    Object.defineProperty(screen, 'availHeight', {{
-                        get: makeNative(() => (screen.height ? screen.height - 40 : 1040), 'get availHeight'),
-                        configurable: true,
-                        enumerable: true
-                    }});
-                }}
-            }}
+            const windowFrameHeight = 75 + (Math.abs(seedNum) % 18);
+            const windowFrameWidth = (Math.abs(seedNum) % 3) * 8;
+
+            Object.defineProperty(window, 'outerWidth', {{
+                get: makeNative(() => (window.innerWidth || 1280) + windowFrameWidth, 'get outerWidth'),
+                configurable: true,
+                enumerable: true
+            }});
+            Object.defineProperty(window, 'outerHeight', {{
+                get: makeNative(() => (window.innerHeight || 800) + windowFrameHeight, 'get outerHeight'),
+                configurable: true,
+                enumerable: true
+            }});
+
+            const defaultScreenTop = {screen_avail_top_js} !== null ? {screen_avail_top_js} : 0;
+            const defaultScreenLeft = {screen_avail_left_js} !== null ? {screen_avail_left_js} : 0;
+            Object.defineProperty(window, 'screenX', {{
+                get: makeNative(() => defaultScreenLeft, 'get screenX'),
+                configurable: true,
+                enumerable: true
+            }});
+            Object.defineProperty(window, 'screenLeft', {{
+                get: makeNative(() => defaultScreenLeft, 'get screenLeft'),
+                configurable: true,
+                enumerable: true
+            }});
+            Object.defineProperty(window, 'screenY', {{
+                get: makeNative(() => defaultScreenTop, 'get screenY'),
+                configurable: true,
+                enumerable: true
+            }});
+            Object.defineProperty(window, 'screenTop', {{
+                get: makeNative(() => defaultScreenTop, 'get screenTop'),
+                configurable: true,
+                enumerable: true
+            }});
         }}
     }} catch (e) {{}}
 
@@ -762,35 +781,51 @@ def _get_antidetect_js(
         }} catch (e) {{}}
     }}
 
-    // 9. Эмуляция характеристик дисплея (screen.width, screen.height, screen.availHeight, window.devicePixelRatio)
+    // 9. Эмуляция характеристик дисплея и панели задач на Screen.prototype и объекте screen
     try {{
         if (typeof window !== 'undefined') {{
-            if ({screen_w_js} !== null) {{
-                Object.defineProperty(screen, 'width', {{
-                    get: makeNative(() => {screen_w_js}, 'get width'),
-                    configurable: true,
-                    enumerable: true
-                }});
-                Object.defineProperty(screen, 'availWidth', {{
-                    get: makeNative(() => {screen_w_js}, 'get availWidth'),
-                    configurable: true,
-                    enumerable: true
-                }});
+            const screenProto = typeof Screen !== 'undefined' ? Screen.prototype : null;
+
+            const targetWidth = {screen_w_js} !== null ? {screen_w_js} : (typeof screen !== 'undefined' ? screen.width : 1920);
+            const targetHeight = {screen_h_js} !== null ? {screen_h_js} : (typeof screen !== 'undefined' ? screen.height : 1080);
+            const targetAvailWidth = {screen_avail_w_js} !== null ? {screen_avail_w_js} : targetWidth;
+            const targetAvailHeight = {screen_avail_h_js} !== null ? {screen_avail_h_js} : (targetHeight > 40 ? targetHeight - 40 : targetHeight);
+            const targetAvailTop = {screen_avail_top_js} !== null ? {screen_avail_top_js} : 0;
+            const targetAvailLeft = {screen_avail_left_js} !== null ? {screen_avail_left_js} : 0;
+
+            const screenProps = {{
+                width: targetWidth,
+                height: targetHeight,
+                availWidth: targetAvailWidth,
+                availHeight: targetAvailHeight,
+                availTop: targetAvailTop,
+                availLeft: targetAvailLeft,
+                colorDepth: 24,
+                pixelDepth: 24,
+            }};
+
+            for (const [propName, propVal] of Object.entries(screenProps)) {{
+                const getterFn = makeNative(() => propVal, `get ${{propName}}`);
+                if (screenProto) {{
+                    try {{
+                        Object.defineProperty(screenProto, propName, {{
+                            get: getterFn,
+                            configurable: true,
+                            enumerable: true
+                        }});
+                    }} catch (e) {{}}
+                }}
+                if (typeof screen !== 'undefined') {{
+                    try {{
+                        Object.defineProperty(screen, propName, {{
+                            get: getterFn,
+                            configurable: true,
+                            enumerable: true
+                        }});
+                    }} catch (e) {{}}
+                }}
             }}
-            if ({screen_h_js} !== null) {{
-                Object.defineProperty(screen, 'height', {{
-                    get: makeNative(() => {screen_h_js}, 'get height'),
-                    configurable: true,
-                    enumerable: true
-                }});
-            }}
-            if ({screen_avail_h_js} !== null) {{
-                Object.defineProperty(screen, 'availHeight', {{
-                    get: makeNative(() => {screen_avail_h_js}, 'get availHeight'),
-                    configurable: true,
-                    enumerable: true
-                }});
-            }}
+
             if ({dpr_js} !== null) {{
                 Object.defineProperty(window, 'devicePixelRatio', {{
                     get: makeNative(() => {dpr_js}, 'get devicePixelRatio'),
