@@ -12,6 +12,9 @@ from collections.abc import Coroutine
 from typing import Any
 
 from browser_stealth.exceptions import OptionalDependencyError
+from browser_stealth.logging import get_logger as setup_logger
+
+logger = setup_logger(__name__)
 
 
 async def _run_with_timeout(
@@ -329,6 +332,9 @@ JS_DOM_PASTE_SCRIPT = (
     "  var desc = Object.getOwnPropertyDescriptor(proto, 'value') || "
     "             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value') || "
     "             Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');"
+    "  try {"
+    "    el.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertFromPaste', data: val }));"
+    "  } catch (e) {}"
     "  if (desc && desc.set) {"
     "    desc.set.call(el, val);"
     "  } else if ('value' in el) {"
@@ -336,7 +342,11 @@ JS_DOM_PASTE_SCRIPT = (
     "  } else {"
     "    el.textContent = val;"
     "  }"
-    "  el.dispatchEvent(new Event('input', { bubbles: true }));"
+    "  try {"
+    "    el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste', data: val }));"
+    "  } catch (e) {"
+    "    el.dispatchEvent(new Event('input', { bubbles: true }));"
+    "  }"
     "  el.dispatchEvent(new Event('change', { bubbles: true }));"
     "  return true;"
     "})"
@@ -353,6 +363,9 @@ JS_DOM_HEAL_SCRIPT = (
     "    var desc = Object.getOwnPropertyDescriptor(proto, 'value') || "
     "               Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value') || "
     "               Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');"
+    "    try {"
+    "      el.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertReplacementText', data: expected }));"
+    "    } catch (e) {}"
     "    if (desc && desc.set) {"
     "      desc.set.call(el, expected);"
     "    } else if ('value' in el) {"
@@ -360,7 +373,11 @@ JS_DOM_HEAL_SCRIPT = (
     "    } else {"
     "      el.textContent = expected;"
     "    }"
-    "    el.dispatchEvent(new Event('input', { bubbles: true }));"
+    "    try {"
+    "      el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: expected }));"
+    "    } catch (e) {"
+    "      el.dispatchEvent(new Event('input', { bubbles: true }));"
+    "    }"
     "    el.dispatchEvent(new Event('change', { bubbles: true }));"
     "  }"
     "})"
@@ -406,6 +423,89 @@ async def _dom_safe_heal(page: Any, selector: str, expected_text: str) -> None:
             pass
 
 
+async def _cdp_native_paste(
+    page: Any,
+    selector: str,
+    text: str,
+    *,
+    is_mac: bool = False,
+) -> bool:
+    """Выполняет нативную CDP-вставку текста через изолированный буфер обмена и шорткат Ctrl+V / Cmd+V.
+
+    Args:
+        page: Вкладка nodriver (Tab).
+        selector: CSS-селектор целевого элемента.
+        text: Текст для вставки.
+        is_mac: Если True, использует Command (modifiers=8), иначе Control (modifiers=2).
+
+    Returns:
+        True, если нативная вставка выполнена успешно, иначе False.
+    """
+    _ensure_nodriver()
+    from nodriver.cdp import input_ as cdp_input
+
+    try:
+        from browser_stealth.antidetect.clipboard import set_isolated_clipboard_text
+
+        # 1. Помещаем текст в изолированный буфер обмена вкладки
+        await set_isolated_clipboard_text(page, text)
+
+        # 2. Фокусируем элемент
+        element = await page.find(selector)
+        await element.focus()
+
+        # 3. Отправляем нативные CDP нажатия клавиш Ctrl+V / Cmd+V с командой paste
+        modifiers = 8 if is_mac else 2
+        mod_key = "Meta" if is_mac else "Control"
+        mod_code = "MetaLeft" if is_mac else "ControlLeft"
+        vk_code = 91 if is_mac else 17
+
+        await page.send(
+            cdp_input.dispatch_key_event(
+                type_="rawKeyDown",
+                key=mod_key,
+                code=mod_code,
+                windows_virtual_key_code=vk_code,
+                native_virtual_key_code=vk_code,
+                modifiers=modifiers,
+            )
+        )
+        await page.send(
+            cdp_input.dispatch_key_event(
+                type_="rawKeyDown",
+                key="v",
+                code="KeyV",
+                windows_virtual_key_code=86,
+                native_virtual_key_code=86,
+                modifiers=modifiers,
+                commands=["paste"],
+            )
+        )
+        await page.send(
+            cdp_input.dispatch_key_event(
+                type_="keyUp",
+                key="v",
+                code="KeyV",
+                windows_virtual_key_code=86,
+                native_virtual_key_code=86,
+                modifiers=modifiers,
+            )
+        )
+        await page.send(
+            cdp_input.dispatch_key_event(
+                type_="keyUp",
+                key=mod_key,
+                code=mod_code,
+                windows_virtual_key_code=vk_code,
+                native_virtual_key_code=vk_code,
+            )
+        )
+        return True
+    except Exception as exc:
+        logger.debug("Сбой нативной вставки через CDP paste shortcut: %s", exc)
+        return False
+
+
 async def _async_type_nodriver(
     page: Any,
     selector: str,
@@ -421,6 +521,7 @@ async def _async_type_nodriver(
     paste_delay_after: tuple[float, float],
     delay_gen: Any,
     typo_gen: Any,
+    paste_mode: str = "cdp_insert",
 ) -> None:
     """Выполняет посимвольный ввод или paste для nodriver."""
     _ensure_nodriver()
@@ -433,9 +534,19 @@ async def _async_type_nodriver(
         if paste_delay_before and paste_delay_before[1] > 0:
             await asyncio.sleep(random.uniform(*paste_delay_before))
 
-        pasted = await _dom_safe_paste(page, selector, text)
-        if not pasted:
-            await page.send(cdp_input.insert_text(text=text))
+        if paste_mode == "cdp_paste":
+            success = await _cdp_native_paste(page, selector, text)
+            if not success:
+                await page.send(cdp_input.insert_text(text=text))
+        elif paste_mode == "dom":
+            pasted = await _dom_safe_paste(page, selector, text)
+            if not pasted:
+                await page.send(cdp_input.insert_text(text=text))
+        else:  # по умолчанию "cdp_insert"
+            try:
+                await page.send(cdp_input.insert_text(text=text))
+            except Exception:
+                await _dom_safe_paste(page, selector, text)
 
         if paste_delay_after and paste_delay_after[1] > 0:
             await asyncio.sleep(random.uniform(*paste_delay_after))
@@ -538,6 +649,7 @@ async def _async_type_playwright(
     paste_delay_after: tuple[float, float],
     delay_gen: Any,
     typo_gen: Any,
+    paste_mode: str = "cdp_insert",
 ) -> None:
     """Выполняет посимвольный ввод или paste для Playwright."""
     _ensure_playwright()
@@ -547,7 +659,21 @@ async def _async_type_playwright(
         if paste_delay_before and paste_delay_before[1] > 0:
             await asyncio.sleep(random.uniform(*paste_delay_before))
 
-        await page.keyboard.insert_text(text)
+        if paste_mode == "cdp_paste":
+            try:
+                from browser_stealth.antidetect.clipboard import set_isolated_clipboard_text
+
+                await set_isolated_clipboard_text(page, text)
+                mod = "Meta" if sys.platform == "darwin" else "Control"
+                await page.keyboard.press(f"{mod}+KeyV")
+            except Exception:
+                await page.keyboard.insert_text(text)
+        elif paste_mode == "dom":
+            pasted = await _dom_safe_paste(page, selector, text)
+            if not pasted:
+                await page.keyboard.insert_text(text)
+        else:
+            await page.keyboard.insert_text(text)
 
         if paste_delay_after and paste_delay_after[1] > 0:
             await asyncio.sleep(random.uniform(*paste_delay_after))

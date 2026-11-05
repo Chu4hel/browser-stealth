@@ -231,12 +231,13 @@ async def async_type_text(
     paste_threshold: int | None = None,
     paste_delay_before: tuple[float, float] = (0.4, 1.0),
     paste_delay_after: tuple[float, float] = (0.3, 0.8),
+    paste_mode: str = "cdp_insert",
     timeout: float | None = None,
 ) -> None:
     """Имитирует ввод текста с опечатками Playwright или nodriver.
 
     Поддерживает адаптивный ввод: если длина текста превышает paste_threshold,
-    текст вставляется целиком (имитируя вставку из буфера обмена Ctrl+V / Paste)
+    текст вставляется целиком через нативный CDP-ввод (Input.insertText или Ctrl+V через клипборд)
     с естественными паузами обдумывания до и после вставки.
 
     Args:
@@ -251,6 +252,7 @@ async def async_type_text(
         paste_threshold: Порог длины текста для вставки через буфер обмена. Если None, ввод всегда посимвольный.
         paste_delay_before: Диапазон паузы обдумывания перед вставкой из буфера (в секундах).
         paste_delay_after: Диапазон паузы проверки после вставки из буфера (в секундах).
+        paste_mode: Режим быстрой вставки ('cdp_insert', 'cdp_paste', 'dom').
         timeout: Таймаут выполнения операции в секундах.
     """
 
@@ -273,6 +275,7 @@ async def async_type_text(
                 paste_delay_after=paste_delay_after,
                 delay_gen=delay_gen,
                 typo_gen=typo_gen,
+                paste_mode=paste_mode,
             )
         elif _is_playwright(page):
             await _async_type_playwright(
@@ -288,6 +291,7 @@ async def async_type_text(
                 paste_delay_after=paste_delay_after,
                 delay_gen=delay_gen,
                 typo_gen=typo_gen,
+                paste_mode=paste_mode,
             )
         else:
             raise ValueError(
@@ -392,6 +396,7 @@ def type_text(
     paste_threshold: int | None = None,
     paste_delay_before: tuple[float, float] = (0.4, 1.0),
     paste_delay_after: tuple[float, float] = (0.3, 0.8),
+    paste_mode: str = "cdp_insert",
 ) -> None:
     """Имитирует ввод текста с опечатками Selenium.
 
@@ -409,6 +414,7 @@ def type_text(
         paste_threshold: Порог длины текста для вставки через буфер обмена. Если None, ввод всегда посимвольный.
         paste_delay_before: Диапазон паузы обдумывания перед вставкой из буфера (в секундах).
         paste_delay_after: Диапазон паузы проверки после вставки из буфера (в секундах).
+        paste_mode: Режим быстрой вставки ('cdp_insert', 'dom').
     """
     _ensure_selenium()
     from selenium.webdriver.common.by import By
@@ -427,11 +433,20 @@ def type_text(
         if delay_before > 0:
             time.sleep(delay_before)
 
-        driver.execute_script(
-            "arguments[0].focus(); document.execCommand('insertText', false, arguments[1]);",
-            element,
-            text,
-        )
+        cdp_success = False
+        if paste_mode == "cdp_insert" and hasattr(driver, "execute_cdp_cmd"):
+            try:
+                driver.execute_cdp_cmd("Input.insertText", {"text": text})
+                cdp_success = True
+            except Exception:
+                cdp_success = False
+
+        if not cdp_success:
+            driver.execute_script(
+                "arguments[0].focus(); document.execCommand('insertText', false, arguments[1]);",
+                element,
+                text,
+            )
 
         delay_after = (
             random.uniform(*paste_delay_after)

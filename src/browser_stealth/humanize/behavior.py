@@ -89,6 +89,10 @@ class BehavioralProfile(BaseModel):
         default=(0.3, 0.8),
         description="Диапазон паузы проверки после вставки из буфера (в секундах).",
     )
+    paste_mode: str = Field(
+        default="cdp_insert",
+        description="Режим быстрой вставки текста ('cdp_insert', 'cdp_paste', 'dom').",
+    )
 
     @property
     def wpm(self) -> float:
@@ -188,6 +192,8 @@ class BehavioralProfile(BaseModel):
         selector: str,
         text: str,
         paste_threshold: int | None = None,
+        paste_mode: str | None = None,
+        timeout: float | None = None,
     ) -> None:
         """Вводит текст через Playwright / nodriver с биометрическими параметрами профиля.
 
@@ -196,8 +202,11 @@ class BehavioralProfile(BaseModel):
             selector: CSS/XPath селектор поля ввода.
             text: Текст для ввода.
             paste_threshold: Порог адаптивной вставки через буфер (если None, берется из профиля).
+            paste_mode: Режим быстрой вставки ('cdp_insert', 'cdp_paste', 'dom').
+            timeout: Таймаут операции в секундах.
         """
         threshold = self.paste_threshold if paste_threshold is None else paste_threshold
+        mode = self.paste_mode if paste_mode is None else paste_mode
         await async_type_text(
             page=page,
             selector=selector,
@@ -210,6 +219,8 @@ class BehavioralProfile(BaseModel):
             paste_threshold=threshold,
             paste_delay_before=self.paste_delay_before,
             paste_delay_after=self.paste_delay_after,
+            paste_mode=mode,
+            timeout=timeout,
         )
 
     async def async_click(
@@ -247,6 +258,7 @@ class BehavioralProfile(BaseModel):
         selector: str,
         text: str,
         paste_threshold: int | None = None,
+        paste_mode: str | None = None,
     ) -> None:
         """Синхронно вводит текст через Selenium с биометрическими параметрами профиля.
 
@@ -255,8 +267,10 @@ class BehavioralProfile(BaseModel):
             selector: CSS-селектор поля ввода.
             text: Текст для ввода.
             paste_threshold: Порог адаптивной вставки через буфер (если None, берется из профиля).
+            paste_mode: Режим быстрой вставки ('cdp_insert', 'dom').
         """
         threshold = self.paste_threshold if paste_threshold is None else paste_threshold
+        mode = self.paste_mode if paste_mode is None else paste_mode
         type_text(
             driver=driver,
             selector=selector,
@@ -268,6 +282,7 @@ class BehavioralProfile(BaseModel):
             paste_threshold=threshold,
             paste_delay_before=self.paste_delay_before,
             paste_delay_after=self.paste_delay_after,
+            paste_mode=mode,
         )
 
     def click(
