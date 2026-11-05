@@ -116,6 +116,10 @@ async def async_move_mouse(
                     f"Не удалось определить тип переданного объекта: {type(page)}. "
                     "Убедитесь, что передан объект Playwright (Page) или nodriver (Tab/Element)."
                 )
+            try:
+                setattr(page, "_stealth_mouse_pos", (x, y))
+            except Exception:
+                pass
             return
 
         if _is_nodriver(page):
@@ -150,6 +154,11 @@ async def async_move_mouse(
                 f"Не удалось определить тип переданного объекта: {type(page)}. "
                 "Убедитесь, что передан объект Playwright (Page) или nodriver (Tab/Element)."
             )
+
+        try:
+            setattr(page, "_stealth_mouse_pos", (x, y))
+        except Exception:
+            pass
 
     await _run_with_timeout(_move(), timeout)
 
@@ -232,6 +241,8 @@ async def async_type_text(
     paste_delay_before: tuple[float, float] = (0.4, 1.0),
     paste_delay_after: tuple[float, float] = (0.3, 0.8),
     paste_mode: str = "cdp_insert",
+    post_typing_delay: tuple[float, float] = (0.25, 0.8),
+    jitter_mouse: bool = True,
     timeout: float | None = None,
 ) -> None:
     """Имитирует ввод текста с опечатками Playwright или nodriver.
@@ -253,6 +264,8 @@ async def async_type_text(
         paste_delay_before: Диапазон паузы обдумывания перед вставкой из буфера (в секундах).
         paste_delay_after: Диапазон паузы проверки после вставки из буфера (в секундах).
         paste_mode: Режим быстрой вставки ('cdp_insert', 'cdp_paste', 'dom').
+        post_typing_delay: Диапазон паузы восприятия после набора текста в секундах.
+        jitter_mouse: Выполнять ли микросмещение курсора мыши (2-6 px) после набора текста.
         timeout: Таймаут выполнения операции в секундах.
     """
 
@@ -298,6 +311,45 @@ async def async_type_text(
                 f"Не удалось определить тип переданного объекта: {type(page)}. "
                 "Убедитесь, что передан объект Playwright (Page) или nodriver (Tab/Element)."
             )
+
+        # Пауза восприятия после окончания ввода
+        if post_typing_delay and post_typing_delay[1] > 0:
+            await asyncio.sleep(random.uniform(*post_typing_delay))
+
+        # Микроджиттер мыши после набора текста (смещение руки на 2-6 px от текущей позиции курсора)
+        if jitter_mouse:
+            mouse_pos = getattr(page, "_stealth_mouse_pos", None)
+            if (
+                isinstance(mouse_pos, tuple)
+                and len(mouse_pos) == 2
+                and isinstance(mouse_pos[0], (int, float))
+                and isinstance(mouse_pos[1], (int, float))
+            ):
+                cx, cy = int(mouse_pos[0]), int(mouse_pos[1])
+                jx = max(0, cx + random.choice([-1, 1]) * random.randint(2, 6))
+                jy = max(0, cy + random.choice([-1, 1]) * random.randint(2, 6))
+                try:
+                    setattr(page, "_stealth_mouse_pos", (jx, jy))
+                except Exception:
+                    pass
+
+                try:
+                    if _is_nodriver(page):
+                        _ensure_nodriver()
+                        from nodriver.cdp import input_ as cdp_input
+
+                        await page.send(
+                            cdp_input.dispatch_mouse_event(
+                                type_="mouseMoved",
+                                x=jx,
+                                y=jy,
+                            )
+                        )
+                    elif _is_playwright(page):
+                        _ensure_playwright()
+                        await page.mouse.move(jx, jy)
+                except Exception:
+                    pass
 
     await _run_with_timeout(_type(), timeout)
 
@@ -397,6 +449,8 @@ def type_text(
     paste_delay_before: tuple[float, float] = (0.4, 1.0),
     paste_delay_after: tuple[float, float] = (0.3, 0.8),
     paste_mode: str = "cdp_insert",
+    post_typing_delay: tuple[float, float] = (0.25, 0.8),
+    jitter_mouse: bool = True,
 ) -> None:
     """Имитирует ввод текста с опечатками Selenium.
 
@@ -415,6 +469,8 @@ def type_text(
         paste_delay_before: Диапазон паузы обдумывания перед вставкой из буфера (в секундах).
         paste_delay_after: Диапазон паузы проверки после вставки из буфера (в секундах).
         paste_mode: Режим быстрой вставки ('cdp_insert', 'dom').
+        post_typing_delay: Диапазон паузы восприятия после набора текста в секундах.
+        jitter_mouse: Выполнять ли микросмещение курсора мыши (2-6 px) после набора текста.
     """
     _ensure_selenium()
     from selenium.webdriver.common.by import By
@@ -455,6 +511,16 @@ def type_text(
         )
         if delay_after > 0:
             time.sleep(delay_after)
+
+        if jitter_mouse:
+            try:
+                from selenium.webdriver.common.action_chains import ActionChains
+
+                dx = random.choice([-1, 1]) * random.randint(2, 6)
+                dy = random.choice([-1, 1]) * random.randint(2, 6)
+                ActionChains(driver).move_by_offset(dx, dy).perform()
+            except Exception:
+                pass
         return
 
     char_delay = 60.0 / (speed_wpm * 5)
@@ -481,6 +547,19 @@ def type_text(
         if delay > 0:
             time.sleep(delay)
 
+    if post_typing_delay and post_typing_delay[1] > 0:
+        time.sleep(random.uniform(*post_typing_delay))
+
+    if jitter_mouse:
+        try:
+            from selenium.webdriver.common.action_chains import ActionChains
+
+            dx = random.choice([-1, 1]) * random.randint(2, 6)
+            dy = random.choice([-1, 1]) * random.randint(2, 6)
+            ActionChains(driver).move_by_offset(dx, dy).perform()
+        except Exception:
+            pass
+
 
 async def async_click(
     page: Any,
@@ -490,7 +569,7 @@ async def async_click(
     start: tuple[int, int] | None = None,
     algorithm: str = "windmouse",
     button: str = "left",
-    hold_time: tuple[float, float] = (0.05, 0.12),
+    hold_time: tuple[float, float] = (0.06, 0.12),
     timeout: float | None = None,
 ) -> None:
     """Имитирует реалистичный клик мышью (с плавным наведением, микропаузами и удержанием кнопки).
@@ -527,7 +606,7 @@ async def async_click(
         hold_delay = (
             random.uniform(*hold_time)
             if hold_time and hold_time[1] > 0
-            else random.uniform(0.04, 0.09)
+            else random.uniform(0.06, 0.12)
         )
         if _is_nodriver(page):
             _ensure_nodriver()

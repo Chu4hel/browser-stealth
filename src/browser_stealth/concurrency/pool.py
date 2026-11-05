@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures.thread  # noqa: F401
 import inspect
+import random
 import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
@@ -73,7 +74,7 @@ class WorkerPool:
         while self._running:
             task = await self.queue.pop()
             if task is None:
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(random.uniform(0.04, 0.09))
                 continue
 
             async with self._lock:

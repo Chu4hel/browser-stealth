@@ -709,7 +709,7 @@ def click(
     y: int | None = None,
     start: tuple[int, int] | None = None,
     algorithm: str = "windmouse",
-    hold_time: tuple[float, float] = (0.05, 0.12),
+    hold_time: tuple[float, float] = (0.06, 0.12),
 ) -> None:
     """Имитирует реалистичный клик мышью Selenium.
 
@@ -744,7 +744,7 @@ def click(
     time.sleep(random.uniform(0.04, 0.12))
 
     hold_delay = (
-        random.uniform(*hold_time) if hold_time and hold_time[1] > 0 else random.uniform(0.04, 0.09)
+        random.uniform(*hold_time) if hold_time and hold_time[1] > 0 else random.uniform(0.06, 0.12)
     )
     actions = ActionChains(driver)
     actions.click_and_hold().pause(hold_delay).release().perform()

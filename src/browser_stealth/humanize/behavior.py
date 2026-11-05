@@ -73,8 +73,16 @@ class BehavioralProfile(BaseModel):
         description="Диапазон задержки удержания клавиши клавиатуры (keyDown -> keyUp) в секундах.",
     )
     click_hold_time: tuple[float, float] = Field(
-        default=(0.05, 0.12),
+        default=(0.06, 0.12),
         description="Диапазон задержки удержания кнопки мыши (mouseDown -> mouseUp) в секундах.",
+    )
+    post_typing_delay: tuple[float, float] = Field(
+        default=(0.25, 0.8),
+        description="Диапазон паузы восприятия после набора текста в секундах.",
+    )
+    jitter_mouse: bool = Field(
+        default=True,
+        description="Выполнять ли микросмещение курсора мыши (2-6 px) после набора текста.",
     )
     paste_threshold: int | None = Field(
         default=None,
@@ -144,9 +152,14 @@ class BehavioralProfile(BaseModel):
         key_hold_time = (key_min, key_max)
 
         # Время удержания кнопки мыши при клике (мс)
-        click_min = round(rng.uniform(0.04, 0.07), 3)
-        click_max = round(click_min + rng.uniform(0.04, 0.07), 3)
+        click_min = round(rng.uniform(0.06, 0.08), 3)
+        click_max = round(click_min + rng.uniform(0.03, 0.05), 3)
         click_hold_time = (click_min, click_max)
+
+        # Пауза восприятия после ввода текста (250 - 800 мс)
+        post_delay_min = round(rng.uniform(0.2, 0.35), 3)
+        post_delay_max = round(post_delay_min + rng.uniform(0.25, 0.45), 3)
+        post_typing_delay = (post_delay_min, post_delay_max)
 
         return cls(
             seed=seed,
@@ -160,6 +173,7 @@ class BehavioralProfile(BaseModel):
             target_area=target_area,
             key_hold_time=key_hold_time,
             click_hold_time=click_hold_time,
+            post_typing_delay=post_typing_delay,
         )
 
     def create_wind_mouse(self) -> WindMouseGenerator:
@@ -193,6 +207,8 @@ class BehavioralProfile(BaseModel):
         text: str,
         paste_threshold: int | None = None,
         paste_mode: str | None = None,
+        post_typing_delay: tuple[float, float] | None = None,
+        jitter_mouse: bool | None = None,
         timeout: float | None = None,
     ) -> None:
         """Вводит текст через Playwright / nodriver с биометрическими параметрами профиля.
@@ -203,10 +219,14 @@ class BehavioralProfile(BaseModel):
             text: Текст для ввода.
             paste_threshold: Порог адаптивной вставки через буфер (если None, берется из профиля).
             paste_mode: Режим быстрой вставки ('cdp_insert', 'cdp_paste', 'dom').
+            post_typing_delay: Диапазон паузы после ввода текста (если None, берется из профиля).
+            jitter_mouse: Выполнять ли микросмещение мыши после набора (если None, берется из профиля).
             timeout: Таймаут операции в секундах.
         """
         threshold = self.paste_threshold if paste_threshold is None else paste_threshold
         mode = self.paste_mode if paste_mode is None else paste_mode
+        post_delay = self.post_typing_delay if post_typing_delay is None else post_typing_delay
+        jitter = self.jitter_mouse if jitter_mouse is None else jitter_mouse
         await async_type_text(
             page=page,
             selector=selector,
@@ -220,6 +240,8 @@ class BehavioralProfile(BaseModel):
             paste_delay_before=self.paste_delay_before,
             paste_delay_after=self.paste_delay_after,
             paste_mode=mode,
+            post_typing_delay=post_delay,
+            jitter_mouse=jitter,
             timeout=timeout,
         )
 
@@ -259,6 +281,8 @@ class BehavioralProfile(BaseModel):
         text: str,
         paste_threshold: int | None = None,
         paste_mode: str | None = None,
+        post_typing_delay: tuple[float, float] | None = None,
+        jitter_mouse: bool | None = None,
     ) -> None:
         """Синхронно вводит текст через Selenium с биометрическими параметрами профиля.
 
@@ -268,9 +292,13 @@ class BehavioralProfile(BaseModel):
             text: Текст для ввода.
             paste_threshold: Порог адаптивной вставки через буфер (если None, берется из профиля).
             paste_mode: Режим быстрой вставки ('cdp_insert', 'dom').
+            post_typing_delay: Диапазон паузы после ввода текста (если None, берется из профиля).
+            jitter_mouse: Выполнять ли микросмещение мыши после набора (если None, берется из профиля).
         """
         threshold = self.paste_threshold if paste_threshold is None else paste_threshold
         mode = self.paste_mode if paste_mode is None else paste_mode
+        post_delay = self.post_typing_delay if post_typing_delay is None else post_typing_delay
+        jitter = self.jitter_mouse if jitter_mouse is None else jitter_mouse
         type_text(
             driver=driver,
             selector=selector,
@@ -283,6 +311,8 @@ class BehavioralProfile(BaseModel):
             paste_delay_before=self.paste_delay_before,
             paste_delay_after=self.paste_delay_after,
             paste_mode=mode,
+            post_typing_delay=post_delay,
+            jitter_mouse=jitter,
         )
 
     def click(
