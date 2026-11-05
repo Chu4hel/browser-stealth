@@ -199,3 +199,47 @@ async def test_nowsecure_turnstile_challenge_live(e2e_proxy: str | None) -> None
         await asyncio.wait_for(_run(), timeout=15.0)
     except TimeoutError:
         pytest.skip("Таймаут (15с) при ожидании ответа Cloudflare Turnstile стенда nowsecure.nl")
+
+
+@pytest.mark.heavy
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_creepjs_detector_live(e2e_proxy: str | None) -> None:
+    """Проверяет прохождение глубокого теста отпечатков CreepJS (поддерживает IPv4 и IPv6)."""
+    target_url = "https://abrahamjuliot.github.io/creepjs/"
+    if not _is_url_reachable(target_url, proxy=e2e_proxy):
+        pytest.skip(f"Стенд {target_url} недоступен по сети")
+
+    async def _run() -> None:
+        config = AntidetectConfig.preset_stealth_nodriver()
+        async with nodriver_session(config=config, headless=True, proxy=e2e_proxy) as browser:
+            tab = await safe_get_or_open_tab(browser, target_url, timeout=10.0)
+            await config.apply_to_nodriver(tab)
+
+            # CreepJS выполняет расчеты отпечатков 5-6 секунд
+            await asyncio.sleep(5.5)
+
+            # Проверяем ключевые маркеры детекта в CreepJS
+            creep_data = await tab.evaluate(
+                """(() => {
+                    const bodyText = document.body ? document.body.innerText : '';
+                    return {
+                        hasBody: !!document.body,
+                        hasWebdriverDetected: bodyText.includes('navigator.webdriver is true') || bodyText.includes('webdriver present'),
+                        hasToStringTamper: bodyText.includes('Function.prototype.toString leak')
+                    };
+                })()"""
+            )
+            res = safe_extract_dict(creep_data)
+            assert res.get("hasBody") is True, "CreepJS не загрузился"
+            assert res.get("hasWebdriverDetected") is False, (
+                "CreepJS зафиксировал navigator.webdriver"
+            )
+            assert res.get("hasToStringTamper") is False, (
+                "CreepJS зафиксировал утечку Function.prototype.toString"
+            )
+
+    try:
+        await asyncio.wait_for(_run(), timeout=MAX_TEST_TIMEOUT)
+    except TimeoutError:
+        pytest.skip("Таймаут ожидания анализа CreepJS")
