@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from browser_stealth.fs import atomic_write, ensure_dir
 
@@ -133,6 +133,38 @@ class FingerprintProfile(BaseModel):
         default="procedural",
         description="Источник генерации: 'procedural', 'browserforge' или 'fpgen'.",
     )
+
+    @model_validator(mode="after")
+    def validate_os_gpu_consistency(self) -> FingerprintProfile:
+        """Проверяет непротиворечивость операционной системы и рендерера WebGL/Client Hints."""
+        os_lower = self.os.lower()
+        renderer = self.webgl.renderer if self.webgl else ""
+        platform_ch = (self.client_hints or {}).get("platform", "")
+
+        if os_lower in ("macos", "darwin", "mac"):
+            if "Direct3D" in renderer or "D3D" in renderer:
+                raise ValueError(
+                    f"Неконсистентный профиль: на платформе macOS рендерер WebGL не может использовать Direct3D ({renderer})."
+                )
+            if platform_ch and platform_ch != "macOS":
+                raise ValueError(
+                    f"Неконсистентный профиль: для ОС {self.os} ожидается platform 'macOS' в client_hints, получено '{platform_ch}'."
+                )
+        elif os_lower in ("linux",):
+            if "Direct3D" in renderer or "D3D" in renderer:
+                raise ValueError(
+                    f"Неконсистентный профиль: на платформе Linux рендерер WebGL не может использовать Direct3D ({renderer})."
+                )
+            if platform_ch and platform_ch != "Linux":
+                raise ValueError(
+                    f"Неконсистентный профиль: для ОС {self.os} ожидается platform 'Linux' в client_hints, получено '{platform_ch}'."
+                )
+        elif os_lower in ("windows", "win"):
+            if platform_ch and platform_ch != "Windows":
+                raise ValueError(
+                    f"Неконсистентный профиль: для ОС {self.os} ожидается platform 'Windows' в client_hints, получено '{platform_ch}'."
+                )
+        return self
 
     def to_antidetect_config(self, stealth_minimal: bool = True) -> AntidetectConfig:
         """Конвертирует профиль в AntidetectConfig для браузерных движков.

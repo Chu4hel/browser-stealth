@@ -112,7 +112,74 @@ TIER_LAPTOP = GPUTier(
 """Аппаратный тир ноутбуков и ультрабуков."""
 
 ALL_TIERS = [TIER_MAINSTREAM, TIER_ENTHUSIAST, TIER_BUDGET_DESKTOP, TIER_LAPTOP]
-"""Список всех доступных аппаратных конфигураций."""
+"""Список всех доступных аппаратных конфигураций для Windows."""
+
+TIER_MACOS_APPLE_SILICON = GPUTier(
+    tier_name="macos_apple_silicon",
+    gpus=[
+        ("Apple", "Apple M1"),
+        ("Apple", "Apple M2"),
+        ("Apple", "Apple M3"),
+        ("Apple", "Apple M1 Pro"),
+        ("Apple", "Apple M2 Pro"),
+        ("Apple", "Apple M3 Pro"),
+    ],
+    memory_options=[8, 16, 24, 32, 36, 48],
+    cpu_cores_options=[8, 10, 11, 12, 14, 16],
+    screen_options=[
+        (1440, 900, 2.0),
+        (1680, 1050, 2.0),
+        (1728, 1117, 2.0),
+        (1512, 982, 2.0),
+        (2560, 1440, 2.0),
+    ],
+    has_webcam_probability=0.99,
+)
+"""Аппаратный тир macOS на чипах Apple Silicon (M1/M2/M3)."""
+
+TIER_MACOS_INTEL = GPUTier(
+    tier_name="macos_intel",
+    gpus=[
+        ("Intel", "Intel(R) Iris(TM) Plus Graphics 645"),
+        ("AMD", "AMD Radeon Pro 5300M"),
+        ("AMD", "AMD Radeon Pro 5500M"),
+    ],
+    memory_options=[8, 16, 32],
+    cpu_cores_options=[4, 6, 8],
+    screen_options=[
+        (1440, 900, 2.0),
+        (1680, 1050, 2.0),
+        (1792, 1120, 2.0),
+    ],
+    has_webcam_probability=0.95,
+)
+"""Аппаратный тир macOS на процессорах Intel."""
+
+MACOS_TIERS = [TIER_MACOS_APPLE_SILICON, TIER_MACOS_INTEL]
+"""Список конфигураций macOS."""
+
+TIER_LINUX_DESKTOP = GPUTier(
+    tier_name="linux_desktop",
+    gpus=[
+        ("Mesa", "Mesa Intel(R) UHD Graphics 630 (CFL GT2)"),
+        ("Mesa", "AMD Radeon RX 6600 (radeonsi, navi23, LLVM 15.0.7, DRM 3.49)"),
+        ("NVIDIA", "NVIDIA GeForce RTX 3060/PCIe/SSE2"),
+        ("NVIDIA", "NVIDIA GeForce RTX 4060/PCIe/SSE2"),
+    ],
+    memory_options=[8, 16, 32, 64],
+    cpu_cores_options=[4, 6, 8, 12, 16, 24],
+    screen_options=[
+        (1920, 1080, 1.0),
+        (2560, 1440, 1.0),
+        (3840, 2160, 1.5),
+        (1920, 1080, 1.25),
+    ],
+    has_webcam_probability=0.40,
+)
+"""Аппаратный тир для десктопных дистрибутивов Linux."""
+
+LINUX_TIERS = [TIER_LINUX_DESKTOP]
+"""Список конфигураций Linux."""
 
 AUDIO_INPUTS_RU = [
     "Микрофон (Realtek(R) Audio)",
@@ -130,6 +197,21 @@ AUDIO_INPUTS_EN = [
 ]
 """Список англоязычных названий микрофонов."""
 
+AUDIO_INPUTS_MAC = [
+    "MacBook Pro Microphone",
+    "MacBook Air Microphone",
+    "Internal Microphone",
+    "Built-in Microphone",
+]
+"""Список названий микрофонов macOS."""
+
+AUDIO_INPUTS_LINUX = [
+    "Built-in Audio Analog Stereo (PulseAudio)",
+    "HD Audio Controller Digital Stereo (HDMI)",
+    "Default Audio Device (ALSA)",
+]
+"""Список названий микрофонов Linux."""
+
 AUDIO_OUTPUTS_RU = [
     "Динамики (Realtek(R) Audio)",
     "Динамики (Realtek High Definition Audio)",
@@ -145,6 +227,21 @@ AUDIO_OUTPUTS_EN = [
     "Speakers (High Definition Audio Device)",
 ]
 """Список англоязычных названий аудиовыходов."""
+
+AUDIO_OUTPUTS_MAC = [
+    "MacBook Pro Speakers",
+    "MacBook Air Speakers",
+    "Internal Speakers",
+    "Built-in Output",
+]
+"""Список названий динамиков macOS."""
+
+AUDIO_OUTPUTS_LINUX = [
+    "Built-in Audio Analog Stereo (PulseAudio)",
+    "Line Out (ALSA)",
+    "Default Audio Device (ALSA)",
+]
+"""Список названий аудиовыходов Linux."""
 
 VIDEO_INPUTS = [
     "Integrated Camera (04f2:b6d9)",
