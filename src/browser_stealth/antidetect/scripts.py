@@ -55,22 +55,61 @@ def _get_antidetect_js(
     ios_block = get_ios_js() if is_ios else ""
 
     return f"""(function() {{
+    // 0. Реестр маскировки функций под нативные [native code] через WeakMap и Proxy над Function.prototype.toString
+    const customToStringMap = new WeakMap();
+    const nativeToString = Function.prototype.toString;
+
+    const patchedToString = new Proxy(nativeToString, {{
+        apply(target, thisArg, args) {{
+            if (typeof thisArg === 'function') {{
+                if (customToStringMap.has(thisArg)) {{
+                    const fnName = customToStringMap.get(thisArg);
+                    return `function ${{fnName}}() {{ [native code] }}`;
+                }}
+                if (thisArg === Function.prototype.toString || thisArg === patchedToString || thisArg === nativeToString) {{
+                    return 'function toString() {{ [native code] }}';
+                }}
+            }}
+            return Reflect.apply(target, thisArg, args);
+        }}
+    }});
+
+    try {{
+        Object.defineProperty(Function.prototype, 'toString', {{
+            value: patchedToString,
+            writable: true,
+            configurable: true,
+            enumerable: false
+        }});
+    }} catch (e) {{
+        try {{
+            Function.prototype.toString = patchedToString;
+        }} catch (e2) {{}}
+    }}
+
+    // Изоляция V8 Error stack traces
+    try {{
+        if (Error.captureStackTrace) {{
+            const origCapture = Error.captureStackTrace;
+            Error.captureStackTrace = function(targetObj, constructorOpt) {{
+                origCapture(targetObj, constructorOpt);
+                if (targetObj && targetObj.stack && typeof targetObj.stack === 'string') {{
+                    targetObj.stack = targetObj.stack.replace(/at patched.*\\(eval at.*?\\)/g, 'at <anonymous>');
+                }}
+            }};
+        }}
+    }} catch (e) {{}}
+
     // Утилита для маскировки функций под нативные [native code] с чистым V8 stack trace
     const makeNative = (fn, name) => {{
         try {{
-            Object.defineProperty(fn, 'name', {{ value: name, configurable: true }});
-            const fnToString = function toString() {{ return `function ${{name}}() {{ [native code] }}`; }};
-            fn.toString = fnToString;
-            fn.toString.toString = function toString() {{ return "function toString() {{ [native code] }}"; }};
-            if (Error.captureStackTrace) {{
-                const origCapture = Error.captureStackTrace;
-                Error.captureStackTrace = function(targetObj, constructorOpt) {{
-                    origCapture(targetObj, constructorOpt || fn);
-                    if (targetObj && targetObj.stack && typeof targetObj.stack === 'string') {{
-                        targetObj.stack = targetObj.stack.replace(/at patched.*\\(eval at.*?\\)/g, `at ${{name}} (<anonymous>)`);
-                    }}
-                }};
-            }}
+            Object.defineProperty(fn, 'name', {{
+                value: name,
+                configurable: true,
+                writable: false,
+                enumerable: false
+            }});
+            customToStringMap.set(fn, name);
         }} catch (e) {{}}
         return fn;
     }};
@@ -439,7 +478,16 @@ def _get_antidetect_js(
                         if (element.contentWindow) {{
                             const cw = element.contentWindow;
                             if (cw.Function && cw.Function.prototype) {{
-                                cw.Function.prototype.toString = window.Function.prototype.toString;
+                                try {{
+                                    Object.defineProperty(cw.Function.prototype, 'toString', {{
+                                        value: window.Function.prototype.toString,
+                                        writable: true,
+                                        configurable: true,
+                                        enumerable: false
+                                    }});
+                                }} catch (errProto) {{
+                                    cw.Function.prototype.toString = window.Function.prototype.toString;
+                                }}
                             }}
                             if (cw.navigator) {{
                                 Object.defineProperty(cw.navigator, 'webdriver', {{
