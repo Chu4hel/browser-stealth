@@ -89,7 +89,9 @@ class SmartProxyResolver:
             max_cache_entries: Максимальное количество записей в памяти при use_memory_cache=True.
         """
         if use_memory_cache or cache_path is None:
-            self.cache: BaseCacheBackend[str] = BoundedMemoryCacheBackend(max_entries=max_cache_entries)
+            self.cache: BaseCacheBackend[str] = BoundedMemoryCacheBackend(
+                max_entries=max_cache_entries
+            )
         else:
             p = Path(cache_path)
             self.cache = FileCacheBackend(p)

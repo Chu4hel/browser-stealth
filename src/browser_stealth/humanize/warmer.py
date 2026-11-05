@@ -66,7 +66,9 @@ class ProfileWarmer:
     async def _safe_evaluate_links(self, script: str) -> list[str]:
         """Безопасно выполняет JS-скрипт сбора ссылок с поддержкой IIFE для nodriver и распаковкой редиректов."""
         clean_script = script.strip()
-        if (clean_script.startswith("() =>") or clean_script.startswith("function")) and not clean_script.endswith("()"):
+        if (
+            clean_script.startswith("() =>") or clean_script.startswith("function")
+        ) and not clean_script.endswith("()"):
             wrapped_js = f"(({clean_script}))()"
         else:
             wrapped_js = clean_script

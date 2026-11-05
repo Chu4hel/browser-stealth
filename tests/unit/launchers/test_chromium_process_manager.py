@@ -1,5 +1,6 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from browser_stealth.launchers.nodriver import ChromiumProcessManager

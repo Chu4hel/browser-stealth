@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from collections.abc import Callable, Sequence
 import random
 import time
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Sequence
 from typing import Generic, TypeVar
 
 TProfile = TypeVar("TProfile")

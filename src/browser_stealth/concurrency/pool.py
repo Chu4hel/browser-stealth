@@ -8,8 +8,11 @@ import asyncio
 import concurrent.futures.thread  # noqa: F401
 import inspect
 import time
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
+
+from browser_stealth.concurrency.reaper import IdleBrowserReaper
+from browser_stealth.logging import get_logger as setup_logger
 
 if TYPE_CHECKING:
     from .base import BaseTaskQueue
@@ -142,10 +145,6 @@ class WorkerPool:
             await self.stop()
 
 
-from typing import Generic, TypeVar
-from browser_stealth.concurrency.reaper import IdleBrowserReaper
-from browser_stealth.logging import get_logger as setup_logger
-
 logger = setup_logger(__name__)
 
 TKey = TypeVar("TKey")
@@ -260,7 +259,9 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
             if len(self._workers) >= self._max_parallel_workers:
                 evicted = await self.evict_lru_worker(exclude_key=key)
                 if evicted:
-                    logger.info("LRU-вытеснен неактивный воркер %s для освобождения ресурсов", evicted)
+                    logger.info(
+                        "LRU-вытеснен неактивный воркер %s для освобождения ресурсов", evicted
+                    )
 
             logger.info("Запуск воркера %s в пуле процессов...", key)
             worker = await self._worker_factory(key)

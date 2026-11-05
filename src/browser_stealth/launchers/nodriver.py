@@ -299,7 +299,9 @@ def unpack_cdp_value(v: object) -> object:
             return unpack_cdp_value(v["value"])
         return {str(k): unpack_cdp_value(val) for k, val in v.items()}
     if isinstance(v, list):
-        if v and all(isinstance(i, (list, tuple)) and len(i) == 2 and isinstance(i[0], str) for i in v):
+        if v and all(
+            isinstance(i, (list, tuple)) and len(i) == 2 and isinstance(i[0], str) for i in v
+        ):
             return safe_extract_dict(v)
         return [unpack_cdp_value(i) for i in v]
     return v
@@ -346,7 +348,6 @@ class ChromiumProcessManager:
 
     def __init__(self) -> None:
         """Инициализирует менеджер процессов."""
-        pass
 
     async def launch(
         self,
@@ -542,11 +543,11 @@ from browser_stealth.concurrency.reaper import (
 )
 
 __all__ = [
+    "ChromiumProcessManager",
     "IdleBrowserReaper",
     "IdleBrowserReaperConfig",
     "IdleReaper",
     "IdleReaperConfig",
-    "ChromiumProcessManager",
     "close_tab",
     "is_profile_locked",
     "launch_nodriver",

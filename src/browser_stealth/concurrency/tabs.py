@@ -169,7 +169,9 @@ class SessionTabPool:
                 len(self._sessions) >= self.max_tabs
                 or (isinstance(browser_tabs, list) and len(browser_tabs) >= self.max_tabs)
             ):
-                oldest_key = min(self._sessions.keys(), key=lambda k: self._sessions[k].last_used_at)
+                oldest_key = min(
+                    self._sessions.keys(), key=lambda k: self._sessions[k].last_used_at
+                )
                 oldest_session = self._sessions.pop(oldest_key)
                 logger.info(
                     "Лимит вкладок (%d) достигнут. LRU-вытеснение сессии '%s'...",
