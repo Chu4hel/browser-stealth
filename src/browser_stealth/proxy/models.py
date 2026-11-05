@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +16,9 @@ class ProxyConfig(BaseModel):
     port: int = Field(ge=1, le=65535)
     username: str | None = None
     password: str | None = None
+    country: str | None = None
+    timezone: str | None = None
+    locale: str | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 
     @property
@@ -94,6 +97,14 @@ class ProxyConfig(BaseModel):
                 return self.server_url
             case _:
                 return self.url
+
+    def to_antidetect_config(self, base_config: Any = None) -> Any:
+        """Синхронизирует прокси с AntidetectConfig, выравнивая таймзону и локаль."""
+        from browser_stealth.antidetect.config import AntidetectConfig
+        from browser_stealth.proxy.geo import align_proxy_with_antidetect
+
+        cfg = base_config.model_copy() if base_config else AntidetectConfig()
+        return align_proxy_with_antidetect(self, cfg)
 
 
 class ProxyHealthResult(BaseModel):

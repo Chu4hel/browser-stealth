@@ -36,6 +36,7 @@ def _get_antidetect_js(
     orientation: dict[str, Any] | None = None,
     locale: str = "en-US",
     user_agent: str | None = None,
+    timezone: str | None = None,
 ) -> str:
     """Генерирует JavaScript-инъекцию для скрытия признаков автоматизации браузера с заданными параметрами."""
     vendor_js = json.dumps(webgl_vendor)
@@ -55,6 +56,7 @@ def _get_antidetect_js(
     devices_js = json.dumps(media_devices) if media_devices is not None else "null"
     locale_js = json.dumps(locale)
     ua_js = json.dumps(user_agent) if user_agent is not None else "null"
+    tz_js = json.dumps(timezone) if timezone is not None else "null"
     is_mobile_js = "true" if is_mobile else "false"
     max_touch_points_val = int(max_touch_points if (max_touch_points > 0 or not is_mobile) else 5)
     orientation_js = json.dumps(orientation) if orientation is not None else "null"
@@ -254,12 +256,64 @@ def _get_antidetect_js(
                     }});
                 }};
                 makeNative(pc.createAnswer, 'createAnswer');
+
+                let customOnIceCandidate = null;
+                Object.defineProperty(pc, 'onicecandidate', {{
+                    get: () => customOnIceCandidate,
+                    set: function(handler) {{
+                        if (typeof handler === 'function') {{
+                            customOnIceCandidate = function(evt) {{
+                                if (evt && evt.candidate && evt.candidate.candidate && evt.candidate.candidate.includes('typ host')) {{
+                                    return;
+                                }}
+                                return handler.apply(this, arguments);
+                            }};
+                        }} else {{
+                            customOnIceCandidate = handler;
+                        }}
+                    }},
+                    configurable: true,
+                    enumerable: true
+                }});
+
+                const origAddEventListener = pc.addEventListener;
+                pc.addEventListener = function(type, listener, options) {{
+                    if (type === 'icecandidate' && typeof listener === 'function') {{
+                        const wrapped = function(evt) {{
+                            if (evt && evt.candidate && evt.candidate.candidate && evt.candidate.candidate.includes('typ host')) {{
+                                return;
+                            }}
+                            return listener.apply(this, arguments);
+                        }};
+                        return origAddEventListener.call(this, type, wrapped, options);
+                    }}
+                    return origAddEventListener.apply(this, arguments);
+                }};
+                makeNative(pc.addEventListener, 'addEventListener');
+
                 return pc;
             }};
             PatchedPeerConnection.prototype = OrigPeerConnection.prototype;
             window.RTCPeerConnection = makeNative(PatchedPeerConnection, 'RTCPeerConnection');
         }}
     }} catch (e) {{}}
+
+    // 0.25. Синхронизация Intl API и таймзоны
+    const targetTimezone = {tz_js};
+    if (targetTimezone) {{
+        try {{
+            if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {{
+                const origResolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+                Intl.DateTimeFormat.prototype.resolvedOptions = makeNative(function resolvedOptions() {{
+                    const res = origResolvedOptions.apply(this, arguments);
+                    if (res) {{
+                        res.timeZone = targetTimezone;
+                    }}
+                    return res;
+                }}, 'resolvedOptions');
+            }}
+        }} catch (e) {{}}
+    }}
 
     // 0.3. Защита изолированных Web Workers и SharedWorkers
     try {{

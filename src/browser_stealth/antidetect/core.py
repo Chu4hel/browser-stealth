@@ -330,6 +330,13 @@ async def apply_antidetect_nodriver(
         except Exception:
             pass
 
+    # 2.2. Эмуляция часового пояса через CDP Emulation при наличии timezone
+    if config is not None and config.timezone:
+        try:
+            await tab.send(emulation.set_timezone_override(timezone_id=config.timezone))
+        except Exception:
+            pass
+
     script = (
         config.get_init_script()
         if config is not None

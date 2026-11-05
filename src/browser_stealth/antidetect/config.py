@@ -119,6 +119,10 @@ class AntidetectConfig(BaseModel):
         default="en-US",
         description="Локаль браузера (например, 'en-US', 'ru-RU').",
     )
+    timezone: str | None = Field(
+        default=None,
+        description="Целевой часовой пояс IANA (например, 'America/New_York', 'Europe/Berlin').",
+    )
 
     @classmethod
     def preset_stealth_nodriver(
@@ -483,6 +487,7 @@ class AntidetectConfig(BaseModel):
             orientation=self.orientation,
             locale=self.locale,
             user_agent=self.user_agent,
+            timezone=self.timezone,
         )
 
     async def apply_to_nodriver(self, tab: Any) -> None:
