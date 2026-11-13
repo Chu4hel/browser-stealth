@@ -72,6 +72,10 @@ jobs:
     needs: [lint, quality]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Ubuntu 24.04 блокирует unprivileged user namespaces через AppArmor,
+      # из-за чего Chrome не стартует без отключения sandbox.
+      CH_TESTING_NO_SANDBOX: "1"
     steps:
       - uses: actions/checkout@v4
       - name: Install uv

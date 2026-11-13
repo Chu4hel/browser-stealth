@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from chutils import SecretManager
+from chutils.config.getters import get_config_value
 from chutils.secret_manager.providers import DotEnvProvider, EnvProvider
 
 if TYPE_CHECKING:
@@ -171,13 +172,17 @@ def get_e2e_browser_args() -> list[str]:
 
     На Linux в CI и под root Chrome не может использовать sandbox:
     Ubuntu 23.10+ ограничивает unprivileged user namespaces через AppArmor,
-    из-за чего браузер завершается до подключения по CDP.
+    из-за чего браузер завершается до подключения по CDP. Отключение
+    управляется настройкой ``testing.no_sandbox`` или переменной
+    ``CH_TESTING_NO_SANDBOX=1``; под root sandbox отключается автоматически.
 
     Returns:
-        Список флагов; ``--no-sandbox`` только для Linux в CI или под root.
+        Список флагов; ``--no-sandbox`` только для Linux при необходимости.
     """
+    configured = get_config_value("testing", "no_sandbox", fallback=False)
+    no_sandbox = str(configured).lower() in {"1", "true", "yes", "on"}
     is_root = hasattr(os, "geteuid") and os.geteuid() == 0
-    if sys.platform.startswith("linux") and (os.environ.get("CI") or is_root):
+    if sys.platform.startswith("linux") and (no_sandbox or is_root):
         return ["--no-sandbox"]
     return []
 
