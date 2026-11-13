@@ -61,7 +61,11 @@ class ProxyConfig(BaseModel):
         return f"Basic {base64.b64encode(creds).decode('utf-8')}"
 
     def to_playwright(self) -> dict[str, str]:
-        """Преобразует конфигурацию в словарь параметров прокси для Playwright."""
+        """Преобразует конфигурацию в словарь параметров прокси для Playwright.
+
+        Returns:
+            Словарь с ключами server и, при наличии, username/password.
+        """
         cfg: dict[str, str] = {"server": self.server_url}
         if self.username is not None:
             cfg["username"] = self.username
@@ -70,11 +74,19 @@ class ProxyConfig(BaseModel):
         return cfg
 
     def to_chrome_arg(self) -> str:
-        """Возвращает CLI аргумент --proxy-server для Chromium."""
+        """Возвращает CLI аргумент --proxy-server для Chromium.
+
+        Returns:
+            Строка вида '--proxy-server=host:port'.
+        """
         return f"--proxy-server={self.server_url}"
 
     def to_selenium(self) -> dict[str, str]:
-        """Преобразует конфигурацию в словарь capabilities прокси для Selenium."""
+        """Преобразует конфигурацию в словарь capabilities прокси для Selenium.
+
+        Returns:
+            Словарь с proxyType=MANUAL и host:port для http/ssl прокси.
+        """
         host_port = f"{self.host}:{self.port}"
         return {
             "proxyType": "MANUAL",
@@ -83,7 +95,14 @@ class ProxyConfig(BaseModel):
         }
 
     def to_string(self, format: str = "url") -> str:
-        """Форматирует прокси в строковое представление по заданному шаблону."""
+        """Форматирует прокси в строковое представление по заданному шаблону.
+
+        Args:
+            format: Шаблон вывода: 'url', 'host:port', 'host:port:user:pass' или 'server'.
+
+        Returns:
+            Строковое представление прокси в выбранном формате.
+        """
         match format:
             case "url":
                 return self.url
@@ -99,7 +118,14 @@ class ProxyConfig(BaseModel):
                 return self.url
 
     def to_antidetect_config(self, base_config: Any = None) -> Any:
-        """Синхронизирует прокси с AntidetectConfig, выравнивая таймзону и локаль."""
+        """Синхронизирует прокси с AntidetectConfig, выравнивая таймзону и локаль.
+
+        Args:
+            base_config: Исходная конфигурация AntidetectConfig; если None, создается новая.
+
+        Returns:
+            Копия AntidetectConfig с таймзоной и локалью, согласованными с прокси.
+        """
         from browser_stealth.antidetect.config import AntidetectConfig
         from browser_stealth.proxy.geo import align_proxy_with_antidetect
 
