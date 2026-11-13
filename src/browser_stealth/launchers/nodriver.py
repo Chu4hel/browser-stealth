@@ -5,6 +5,9 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import os
+import shutil
+import sys
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -149,6 +152,20 @@ async def launch_nodriver(
             sanitize_profile(user_data_dir)
         except Exception as exc:
             logger.debug(f"Не удалось выполнить sanitize_profile для {user_data_dir}: {exc}")
+
+    # На Linux nodriver выбирает самый короткий путь к браузеру, из-за чего
+    # может взять snap-обёртку chromium вместо настоящего Google Chrome.
+    # Предпочитаем явный google-chrome, чтобы избежать проблем в CI.
+    if browser_executable_path is None:
+        env_path = os.environ.get("BROWSER_EXECUTABLE_PATH") or os.environ.get("CHROME_BIN")
+        if env_path and Path(env_path).exists():
+            browser_executable_path = env_path
+        elif sys.platform.startswith("linux"):
+            for candidate in ("google-chrome", "google-chrome-stable", "chrome"):
+                found = shutil.which(candidate)
+                if found:
+                    browser_executable_path = found
+                    break
 
     # Запуск браузера
     start_kwargs: dict[str, Any] = dict(kwargs)
