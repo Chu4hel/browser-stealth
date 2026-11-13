@@ -60,6 +60,62 @@ browser = await launch_nodriver(
 )
 ```
 
+### Защита от неподдерживаемых флагов Chromium
+
+Устаревшие руководства по Selenium/Puppeteer предлагают передавать
+`--disable-blink-features=AutomationControlled`, `--use-fake-ui-for-media-stream`
+и подобные флаги. В современных версиях Chromium они показывают системный инфобар,
+демаскируют автоматизацию и нарушают геометрию viewport, поэтому `browser-stealth`
+скрывает те же маркеры через CDP-инъекции.
+
+Все пользовательские аргументы запуска проходят проверку. По умолчанию опасные
+флаги удаляются, а в лог пишется предупреждение с причиной:
+
+```python
+from browser_stealth import launch_nodriver
+
+browser = await launch_nodriver(
+    browser_args=["--disable-blink-features=AutomationControlled"],
+    # Флаг будет удалён, браузер запустится без него
+)
+```
+
+Поведение настраивается параметром `browser_args_policy`:
+
+```python
+from browser_stealth import FlagPolicy, UnsupportedBrowserFlagError, launch_nodriver
+
+# Строгая валидация: запуск прервётся с UnsupportedBrowserFlagError
+try:
+    await launch_nodriver(
+        browser_args=["--use-fake-ui-for-media-stream"],
+        browser_args_policy=FlagPolicy.ERROR,
+    )
+except UnsupportedBrowserFlagError as exc:
+    print("Удалите флаги:", exc.flags)
+
+# Диагностика: аргументы передаются как есть, но в лог пишется предупреждение
+await launch_nodriver(
+    browser_args=["--enable-automation"],
+    browser_args_policy=FlagPolicy.IGNORE,
+)
+```
+
+Для статического анализа конфигураций используйте функции без побочных эффектов:
+
+```python
+from browser_stealth import find_unsupported_flags, raise_for_unsupported_flags
+
+flags = ["--no-first-run", "--enable-automation"]
+violations = find_unsupported_flags(flags)
+for violation in violations:
+    print(violation.argument, violation.rule.reason)
+
+raise_for_unsupported_flags(flags)  # выбросит UnsupportedBrowserFlagError
+```
+
+Полный реестр опасных флагов доступен в `UNSUPPORTED_CHROMIUM_FLAGS`.
+
 ### Selenium WebDriver
 
 ```python

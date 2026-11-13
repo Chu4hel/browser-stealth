@@ -14,6 +14,10 @@
 | `apply_antidetect_selenium` | Применение CDP-маскировки в Selenium WebDriver |
 | `extract_clearance_cookies` | Извлечение cookies и User-Agent для авторизованных TLS-запросов |
 | `get_browser_launch_args` | Набор обязательных аргументов командной строки Chromium для обхода детектов |
+| `sanitize_browser_args` | Проверка и удаление неподдерживаемых флагов Chromium из списка аргументов |
+| `find_unsupported_flags` | Диагностика: поиск опасных флагов Chromium без изменения списка |
+| `raise_for_unsupported_flags` | Строгая валидация аргументов с выбросом `UnsupportedBrowserFlagError` |
+| `FlagPolicy` | Политика обработки опасных флагов: `SANITIZE`, `ERROR`, `IGNORE` |
 
 ---
 
