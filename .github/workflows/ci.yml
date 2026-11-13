@@ -37,6 +37,9 @@ jobs:
         run: uv python install 3.12
       - name: Run mypy
         run: uv run mypy src/browser_stealth
+      # .env не коммитится, но EnvSyncRule требует его наличия для проверки.
+      - name: Sync environment template
+        run: uv run chutils dev sync-env --yes
       # ManifestRule отключён сознательно: манифест живёт в корне (AGENTS.md),
       # пакетный antigravity.md не создаётся.
       - name: Run ai-lint
