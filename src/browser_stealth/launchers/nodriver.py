@@ -13,6 +13,7 @@ from typing import Any
 
 from browser_stealth.antidetect import get_browser_launch_args
 from browser_stealth.antidetect.config import AntidetectConfig
+from browser_stealth.antidetect.flags import FlagPolicy, sanitize_browser_args
 from browser_stealth.lifecycle import register_cleanup
 from browser_stealth.logging import get_logger as setup_logger
 from browser_stealth.profiles.hygiene import (
@@ -78,6 +79,7 @@ async def launch_nodriver(
     proxy: ProxyConfig | str | dict[str, object] | None = None,
     headless: bool = False,
     browser_args: list[str] | None = None,
+    browser_args_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
     **kwargs: Any,
@@ -92,6 +94,10 @@ async def launch_nodriver(
             автоматически создается временное Manifest v3 расширение.
         headless: Флаг запуска в фоновом (headless) режиме.
         browser_args: Дополнительные аргументы командной строки Chromium.
+        browser_args_policy: Политика обработки неподдерживаемых флагов Chromium
+            (например, ``--disable-blink-features=AutomationControlled``).
+            По умолчанию опасные флаги удаляются с предупреждением в лог.
+            Передайте ``FlagPolicy.ERROR`` для строгой валидации.
         apply_config_to_tab: Если True, автоматически применяет конфигурацию антидетекта к первой вкладке.
         sanitize_profile_dir: Если True и передан user_data_dir, перед запуском браузера сбрасывает флаги
             аварийного завершения (exit_type="Normal") и очищает остаточные сессии/вкладки,
@@ -127,6 +133,9 @@ async def launch_nodriver(
     # Синхронизация User-Agent флага запуска с AntidetectConfig
     if config.user_agent and not any(a.startswith("--user-agent=") for a in merged_args):
         merged_args.append(f"--user-agent={config.user_agent}")
+
+    # Защита от неподдерживаемых и скомпрометированных флагов Chromium
+    merged_args = sanitize_browser_args(merged_args, policy=browser_args_policy)
 
     # Очистка профиля от следов падений и сброс crash flags перед запуском
     if sanitize_profile_dir and user_data_dir is not None:
@@ -192,6 +201,7 @@ async def nodriver_session(
     proxy: ProxyConfig | str | dict[str, object] | None = None,
     headless: bool = False,
     browser_args: list[str] | None = None,
+    browser_args_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
     **kwargs: Any,
@@ -205,6 +215,7 @@ async def nodriver_session(
         proxy: Настройки прокси.
         headless: Флаг запуска в headless режиме.
         browser_args: Дополнительные флаги Chromium.
+        browser_args_policy: Политика обработки неподдерживаемых флагов Chromium.
         apply_config_to_tab: Автоматически применить AntidetectConfig к вкладке.
         sanitize_profile_dir: Выполнить санитайзинг профиля перед запуском.
         **kwargs: Дополнительные параметры nodriver.start().
@@ -219,6 +230,7 @@ async def nodriver_session(
         proxy=proxy,
         headless=headless,
         browser_args=browser_args,
+        browser_args_policy=browser_args_policy,
         apply_config_to_tab=apply_config_to_tab,
         sanitize_profile_dir=sanitize_profile_dir,
         **kwargs,
@@ -359,6 +371,7 @@ class ChromiumProcessManager:
         extra_args: list[str] | None = None,
         browser_executable_path: Path | str | None = None,
         sandbox: bool = True,
+        flag_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     ) -> tuple[Any, Any | None]:
         """Запускает процесс Chromium через nodriver с изоляцией профиля и поддержкой прокси.
 
@@ -371,6 +384,8 @@ class ChromiumProcessManager:
             extra_args: Дополнительные флаги командной строки браузера.
             browser_executable_path: Пользовательский путь к бинарнику Chromium.
             sandbox: Использовать ли песочницу Chrome (по умолчанию True).
+            flag_policy: Политика обработки неподдерживаемых флагов Chromium.
+                По умолчанию опасные флаги удаляются с предупреждением в лог.
 
         Returns:
             Кортеж из (nodriver.Browser, AsyncProxyTunnel | None).
@@ -403,6 +418,9 @@ class ChromiumProcessManager:
             for e_arg in extra_args:
                 if e_arg not in browser_args:
                     browser_args.append(e_arg)
+
+        # Защита от неподдерживаемых и скомпрометированных флагов Chromium
+        browser_args = sanitize_browser_args(browser_args, policy=flag_policy)
 
         proxy_tunnel = None
         if proxy_server:
