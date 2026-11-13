@@ -53,3 +53,24 @@ data = {"title": "Товар", "price": 1200, "url": "https://example.com/p1"}
 assert_extraction_complete(data, required_fields=["title", "price", "url"])
 assert_valid_url(data["url"])
 ```
+
+---
+
+## 4. Готовые pytest-фикстуры (`browser_stealth.testing.fixtures`)
+
+Модуль поставляется как pytest-плагин и требует `pytest` — установите extra:
+
+```bash
+uv add "browser-stealth[testing]"
+```
+
+Подключение в `conftest.py` проекта:
+
+```python
+pytest_plugins = ["browser_stealth.testing.fixtures"]
+```
+
+Доступные фикстуры: `local_test_server`, `live_browser_session`,
+`html_snapshot_recorder`, `mock_nodriver_tab`, `mock_playwright_page`,
+`mock_selenium_driver`. Модуль также регистрирует маркеры `e2e` и `heavy`
+через `pytest_configure`.

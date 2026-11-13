@@ -29,6 +29,7 @@ selenium = ["selenium>=4.15.0"]
 camoufox = ["camoufox>=0.4.0"]
 bidi = ["websockets>=14.0.0"]
 crypto = ["cryptography>=41.0.0"]
+testing = ["pytest>=8.0"]
 all = [
     "browser-stealth[playwright,nodriver,selenium,camoufox,bidi,crypto]",
 ]
@@ -43,7 +44,6 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "cryptography>=50.0.2",
-    "httpx>=0.28.1",
     "mypy>=2.3.1",
     "playwright>=1.62.0",
     "pytest>=9.1.1",

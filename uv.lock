@@ -183,11 +183,13 @@ playwright = [
 selenium = [
     { name = "selenium" },
 ]
+testing = [
+    { name = "pytest" },
+]
 
 [package.dev-dependencies]
 dev = [
     { name = "cryptography" },
-    { name = "httpx" },
     { name = "mypy" },
     { name = "playwright" },
     { name = "pytest" },
@@ -210,15 +212,15 @@ requires-dist = [
     { name = "nodriver", marker = "extra == 'nodriver'", specifier = ">=0.38" },
     { name = "playwright", marker = "extra == 'playwright'", specifier = ">=1.40.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
+    { name = "pytest", marker = "extra == 'testing'", specifier = ">=8.0" },
     { name = "selenium", marker = "extra == 'selenium'", specifier = ">=4.15.0" },
     { name = "websockets", marker = "extra == 'bidi'", specifier = ">=14.0.0" },
 ]
-provides-extras = ["playwright", "nodriver", "selenium", "camoufox", "bidi", "crypto", "all"]
+provides-extras = ["playwright", "nodriver", "selenium", "camoufox", "bidi", "crypto", "testing", "all"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "cryptography", specifier = ">=50.0.2" },
-    { name = "httpx", specifier = ">=0.28.1" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "playwright", specifier = ">=1.62.0" },
     { name = "pytest", specifier = ">=9.1.1" },
