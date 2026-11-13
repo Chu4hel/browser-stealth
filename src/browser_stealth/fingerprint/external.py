@@ -17,11 +17,12 @@ from .models import (
     WebGLFingerprint,
 )
 
-FingerprintGenerator: Any
 try:
-    from browserforge.fingerprints import FingerprintGenerator
+    from browserforge.fingerprints import FingerprintGenerator as _BrowserForgeFingerprintGenerator
 except ImportError:
-    FingerprintGenerator = None
+    _BrowserForgeFingerprintGenerator = None  # type: ignore[assignment,misc]
+
+FingerprintGenerator: Any = _BrowserForgeFingerprintGenerator
 
 
 def _ensure_browserforge() -> None:

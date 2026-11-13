@@ -157,7 +157,11 @@ async def launch_nodriver(
     # может взять snap-обёртку chromium вместо настоящего Google Chrome.
     # Предпочитаем явный google-chrome, чтобы избежать проблем в CI.
     if browser_executable_path is None:
-        env_path = os.environ.get("BROWSER_EXECUTABLE_PATH") or os.environ.get("CHROME_BIN")
+        env_path = os.environ.get(
+            "BROWSER_EXECUTABLE_PATH"
+        ) or os.environ.get(  # chutils: ignore[ChutilsIntegrationRule]
+            "CHROME_BIN"  # chutils: ignore[ChutilsIntegrationRule]
+        )
         if env_path and Path(env_path).exists():
             browser_executable_path = env_path
         elif sys.platform.startswith("linux"):
