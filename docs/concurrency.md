@@ -43,8 +43,8 @@ uv add "browser-stealth[redis]"
 повторяя неудачные задачи с backoff.
 
 ```python
-async def handle(task: ScrapingTask) -> None:
-    ...
+async def handle(task: ScrapingTask) -> None: ...
+
 
 pool = WorkerPool(
     queue=queue,
@@ -54,7 +54,7 @@ pool = WorkerPool(
     retry_backoff=2.0,
 )
 await pool.start()
-await pool.run_until_complete()   # или await pool.stop()
+await pool.run_until_complete()  # или await pool.stop()
 ```
 
 `completed_count` и `failed_count` доступны как свойства.

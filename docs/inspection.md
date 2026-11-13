@@ -27,9 +27,9 @@ async with nodriver_session() as browser:
 ```python
 page = await inspect.snapshot(
     tab,
-    max_nodes=200,       # ограничение размера ответа
-    include_hidden=False, # невидимые элементы по умолчанию скрыты
-    text_limit=120,       # обрезка текста узла
+    max_nodes=200,  # ограничение размера ответа
+    include_hidden=False,  # невидимые элементы по умолчанию скрыты
+    text_limit=120,  # обрезка текста узла
 )
 ```
 
