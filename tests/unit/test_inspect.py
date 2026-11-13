@@ -64,10 +64,12 @@ class FakeTab:
     def __init__(self, result: object) -> None:
         self.result = result
         self.scripts: list[str] = []
+        self.kwargs: list[dict[str, object]] = []
 
-    async def evaluate(self, script: str) -> object:
+    async def evaluate(self, script: str, **kwargs: object) -> object:
         """Запоминает и возвращает подготовленный результат."""
         self.scripts.append(script)
+        self.kwargs.append(kwargs)
         return self.result
 
 
@@ -82,6 +84,48 @@ def test_coerce_payload_accepts_dict_json_and_pairs() -> None:
     assert coerce_payload(None) is None
     assert coerce_payload("не json") is None
     assert coerce_payload(42) is None
+
+
+def test_coerce_payload_unwraps_nested_cdp_remote_objects() -> None:
+    """Проверяет разворачивание вложенных CDP-обёрток в ответе evaluate."""
+    wrapped = {
+        "type": "object",
+        "value": [
+            ["url", {"type": "string", "value": "https://example.com"}],
+            [
+                "nodes",
+                {
+                    "type": "array",
+                    "value": [
+                        {
+                            "type": "object",
+                            "value": [
+                                ["tag", {"type": "string", "value": "button"}],
+                                [
+                                    "box",
+                                    {
+                                        "type": "array",
+                                        "value": [
+                                            {"type": "number", "value": 1},
+                                            {"type": "number", "value": 2},
+                                        ],
+                                    },
+                                ],
+                            ],
+                        }
+                    ],
+                },
+            ],
+        ],
+    }
+
+    payload = coerce_payload(wrapped)
+
+    assert payload is not None
+    assert payload["url"] == "https://example.com"
+    assert payload["nodes"][0]["tag"] == "button"
+    assert payload["nodes"][0]["box"] == [1, 2]
+    assert coerce_payload({"type": "string", "value": "просто строка"}) is None
 
 
 def test_normalize_node_filters_attributes_and_skips_empty() -> None:

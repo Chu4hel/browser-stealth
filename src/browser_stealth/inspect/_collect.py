@@ -215,11 +215,43 @@ _JS_COLLECT = r"""
 """
 
 
+_CDP_TYPES = frozenset(
+    {"array", "bigint", "boolean", "function", "number", "object", "string", "symbol", "undefined"}
+)
+
+
+def _unwrap_cdp(value: Any) -> Any:
+    """Рекурсивно разворачивает CDP-обёртки ``{type, value}`` и списки пар.
+
+    ``Tab.evaluate`` в nodriver возвращает ответ в виде списка пар
+    ``[key, RemoteObject]``, где вложенные объекты и массивы тоже обёрнуты.
+    Без разворачивания снимок содержит словари вместо строк и чисел.
+
+    Args:
+        value: Сырое значение из ответа evaluate.
+
+    Returns:
+        Значение с обычными dict/list/str/int/bool.
+    """
+    if isinstance(value, dict):
+        if value.get("type") in _CDP_TYPES and "value" in value:
+            return _unwrap_cdp(value["value"])
+        return {str(key): _unwrap_cdp(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        if value and all(
+            isinstance(item, (list, tuple)) and len(item) == 2 and isinstance(item[0], str)
+            for item in value
+        ):
+            return {item[0]: _unwrap_cdp(item[1]) for item in value}
+        return [_unwrap_cdp(item) for item in value]
+    return value
+
+
 def coerce_payload(raw: Any) -> dict[str, Any] | None:
     """Приводит ответ ``evaluate`` к словарю снимка.
 
     nodriver может вернуть уже разобранный объект, JSON-строку или список
-    пар ``[key, value]`` в зависимости от версии и типа значения.
+    пар ``[key, value]`` с CDP-обёртками вложенных значений.
 
     Args:
         raw: Сырой результат выполнения JavaScript.
@@ -227,6 +259,7 @@ def coerce_payload(raw: Any) -> dict[str, Any] | None:
     Returns:
         Словарь снимка или None, если привести значение не удалось.
     """
+    raw = _unwrap_cdp(raw)
     if isinstance(raw, dict):
         return raw
     if isinstance(raw, str):
