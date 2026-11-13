@@ -11,6 +11,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+from chutils.fs import ensure_dir
+
 from browser_stealth.antidetect import get_browser_launch_args
 from browser_stealth.antidetect.config import AntidetectConfig
 from browser_stealth.antidetect.flags import FlagPolicy, sanitize_browser_args
@@ -322,7 +324,14 @@ async def safe_get_or_open_tab(
 
 
 def unpack_cdp_value(v: object) -> object:
-    """Рекурсивно извлекает примитивные значения из структур CDP."""
+    """Рекурсивно извлекает примитивные значения из структур CDP.
+
+    Args:
+        v: Значение CDP: dict, list, пара key/value или примитив.
+
+    Returns:
+        Развернутое значение: dict, list или примитив без оберток CDP.
+    """
     if isinstance(v, dict):
         if "value" in v:
             return unpack_cdp_value(v["value"])
@@ -407,8 +416,7 @@ class ChromiumProcessManager:
         Returns:
             Кортеж из (nodriver.Browser, AsyncProxyTunnel | None).
         """
-        p_path = Path(profile_path).resolve()
-        p_path.mkdir(parents=True, exist_ok=True)
+        p_path = ensure_dir(Path(profile_path).resolve())
         user_data_str = str(p_path)
 
         recommended_args = get_browser_launch_args()
