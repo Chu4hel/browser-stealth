@@ -61,6 +61,7 @@ def _node_by_name(page: dict[str, object], name: str) -> dict[str, object]:
 async def test_inspect_snapshot_find_frames_screenshot_e2e(
     tmp_path: Path,
     e2e_proxy: str | None,
+    e2e_browser_args: list[str],
 ) -> None:
     """Проверяет инспекцию локальной страницы в реальном браузере."""
     with LocalTestServer() as server:
@@ -68,7 +69,12 @@ async def test_inspect_snapshot_find_frames_screenshot_e2e(
         page_url = server.serve_html("/page", _PAGE_HTML.format(frame_url=frame_url))
 
         config = AntidetectConfig.preset_stealth_nodriver()
-        async with nodriver_session(config=config, headless=True, proxy=e2e_proxy) as browser:
+        async with nodriver_session(
+            config=config,
+            headless=True,
+            proxy=e2e_proxy,
+            browser_args=e2e_browser_args,
+        ) as browser:
             tab = await safe_get_or_open_tab(browser, page_url, timeout=10.0)
             await config.apply_to_nodriver(tab)
 

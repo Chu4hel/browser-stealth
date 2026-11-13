@@ -52,7 +52,10 @@ def _is_url_reachable(url: str, timeout: float = 3.0, proxy: str | None = None) 
 @pytest.mark.heavy
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_sannysoft_bot_detector_live(e2e_proxy: str | None) -> None:
+async def test_sannysoft_bot_detector_live(
+    e2e_proxy: str | None,
+    e2e_browser_args: list[str],
+) -> None:
     """Проверяет прохождение тестов на https://bot.sannysoft.com/ в реальном браузере nodriver."""
     target_url = "https://bot.sannysoft.com/"
     if not _is_url_reachable(target_url, proxy=e2e_proxy):
@@ -60,7 +63,12 @@ async def test_sannysoft_bot_detector_live(e2e_proxy: str | None) -> None:
 
     async def _run() -> None:
         config = AntidetectConfig.preset_stealth_nodriver()
-        async with nodriver_session(config=config, headless=True, proxy=e2e_proxy) as browser:
+        async with nodriver_session(
+            config=config,
+            headless=True,
+            proxy=e2e_proxy,
+            browser_args=e2e_browser_args,
+        ) as browser:
             tab = await safe_get_or_open_tab(browser, target_url, timeout=8.0)
             await config.apply_to_nodriver(tab)
 
@@ -110,7 +118,10 @@ async def test_sannysoft_bot_detector_live(e2e_proxy: str | None) -> None:
 @pytest.mark.heavy
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_browserleaks_webgl_vendor_override_live(e2e_proxy: str | None) -> None:
+async def test_browserleaks_webgl_vendor_override_live(
+    e2e_proxy: str | None,
+    e2e_browser_args: list[str],
+) -> None:
     """Проверяет корректность подмены WebGL параметров на https://browserleaks.com/webgl."""
     target_url = "https://browserleaks.com/webgl"
     if not _is_url_reachable(target_url, proxy=e2e_proxy):
@@ -127,7 +138,12 @@ async def test_browserleaks_webgl_vendor_override_live(e2e_proxy: str | None) ->
             stealth_minimal=False,
         )
 
-        async with nodriver_session(config=config, headless=True, proxy=e2e_proxy) as browser:
+        async with nodriver_session(
+            config=config,
+            headless=True,
+            proxy=e2e_proxy,
+            browser_args=e2e_browser_args,
+        ) as browser:
             tab = getattr(browser, "main_tab", None)
             if tab is None:
                 tab = await safe_get_or_open_tab(browser, "about:blank", timeout=8.0)
@@ -163,7 +179,10 @@ async def test_browserleaks_webgl_vendor_override_live(e2e_proxy: str | None) ->
 @pytest.mark.heavy
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_nowsecure_turnstile_challenge_live(e2e_proxy: str | None) -> None:
+async def test_nowsecure_turnstile_challenge_live(
+    e2e_proxy: str | None,
+    e2e_browser_args: list[str],
+) -> None:
     """Проверяет обнаружение и прохождение защиты Cloudflare Turnstile на https://nowsecure.nl/."""
     target_url = "https://nowsecure.nl/"
     if not _is_url_reachable(target_url, proxy=e2e_proxy):
@@ -171,7 +190,12 @@ async def test_nowsecure_turnstile_challenge_live(e2e_proxy: str | None) -> None
 
     async def _run() -> None:
         config = AntidetectConfig.preset_stealth_nodriver()
-        async with nodriver_session(config=config, headless=True, proxy=e2e_proxy) as browser:
+        async with nodriver_session(
+            config=config,
+            headless=True,
+            proxy=e2e_proxy,
+            browser_args=e2e_browser_args,
+        ) as browser:
             tab = await safe_get_or_open_tab(browser, target_url, timeout=8.0)
             await config.apply_to_nodriver(tab)
 
@@ -204,7 +228,10 @@ async def test_nowsecure_turnstile_challenge_live(e2e_proxy: str | None) -> None
 @pytest.mark.heavy
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_creepjs_detector_live(e2e_proxy: str | None) -> None:
+async def test_creepjs_detector_live(
+    e2e_proxy: str | None,
+    e2e_browser_args: list[str],
+) -> None:
     """Проверяет прохождение глубокого теста отпечатков CreepJS (поддерживает IPv4 и IPv6)."""
     target_url = "https://abrahamjuliot.github.io/creepjs/"
     if not _is_url_reachable(target_url, proxy=e2e_proxy):
@@ -212,7 +239,12 @@ async def test_creepjs_detector_live(e2e_proxy: str | None) -> None:
 
     async def _run() -> None:
         config = AntidetectConfig.preset_stealth_nodriver()
-        async with nodriver_session(config=config, headless=True, proxy=e2e_proxy) as browser:
+        async with nodriver_session(
+            config=config,
+            headless=True,
+            proxy=e2e_proxy,
+            browser_args=e2e_browser_args,
+        ) as browser:
             tab = await safe_get_or_open_tab(browser, target_url, timeout=10.0)
             await config.apply_to_nodriver(tab)
 

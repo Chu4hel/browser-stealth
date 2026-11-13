@@ -8,6 +8,8 @@ Pytest плагин и фикстуры для автотестирования 
 
 from __future__ import annotations
 
+import os
+import sys
 from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -164,6 +166,22 @@ def get_e2e_proxy() -> str | None:
     return None
 
 
+def get_e2e_browser_args() -> list[str]:
+    """Возвращает дополнительные флаги Chromium для E2E-тестов.
+
+    На Linux в CI и под root Chrome не может использовать sandbox:
+    Ubuntu 23.10+ ограничивает unprivileged user namespaces через AppArmor,
+    из-за чего браузер завершается до подключения по CDP.
+
+    Returns:
+        Список флагов; ``--no-sandbox`` только для Linux в CI или под root.
+    """
+    is_root = hasattr(os, "geteuid") and os.geteuid() == 0
+    if sys.platform.startswith("linux") and (os.environ.get("CI") or is_root):
+        return ["--no-sandbox"]
+    return []
+
+
 @pytest.fixture(scope="session")
 def e2e_proxy() -> str | None:
     """Сессионная фикстура прокси для E2E и Heavy тестов.
@@ -172,3 +190,13 @@ def e2e_proxy() -> str | None:
         Строка прокси для E2E-тестов или None, если она не задана.
     """
     return get_e2e_proxy()
+
+
+@pytest.fixture(scope="session")
+def e2e_browser_args() -> list[str]:
+    """Сессионная фикстура дополнительных флагов Chromium для E2E-тестов.
+
+    Returns:
+        Флаги, необходимые для запуска Chrome на Linux в CI.
+    """
+    return get_e2e_browser_args()
