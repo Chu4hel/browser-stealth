@@ -51,6 +51,14 @@ except ImportError:
     _BaseOptionalDependencyError = ImportError
 
 
+class InspectionError(BrowserStealthError):
+    """Исключение, возникающее при неудачном чтении состояния страницы.
+
+    Поднимается функциями :mod:`browser_stealth.inspect`, когда вкладка
+    недоступна, CDP-вызов завершился ошибкой или вернул неожиданный формат.
+    """
+
+
 class OptionalDependencyError(BrowserStealthError, _BaseOptionalDependencyError):
     """Исключение, возникающее при отсутствии опциональной зависимости библиотеки."""
 

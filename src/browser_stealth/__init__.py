@@ -11,6 +11,7 @@ from . import (
     concurrency,
     fingerprint,
     humanize,
+    inspect,
     launchers,
     profiles,
     proxy,
@@ -38,6 +39,7 @@ from .bidi.client import BiDiClient
 from .bidi.session import BiDiSession, bidi_session
 from .exceptions import (
     BrowserStealthError,
+    InspectionError,
     OptionalDependencyError,
     UnsupportedBrowserFlagError,
 )
@@ -91,6 +93,7 @@ __all__ = [
     "BrowserProfile",
     "BrowserStealthError",
     "FlagPolicy",
+    "InspectionError",
     "JitterDelayGenerator",
     "KeyboardTypoGenerator",
     "OptionalDependencyError",
@@ -130,6 +133,7 @@ __all__ = [
     "get_client_hints",
     "human_sleep",
     "humanize",
+    "inspect",
     "is_cf_turnstile_solved",
     "launch_nodriver",
     "launchers",

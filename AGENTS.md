@@ -39,6 +39,8 @@ uv run chutils dev sync-env               # синхронизировать .en
   camoufox и BiDi.
 - `src/browser_stealth/profiles/` — профили, гигиена, ротация и прогрев.
 - `src/browser_stealth/proxy/` — модели, парсер, адаптеры, кэш и хранилище секретов.
+- `src/browser_stealth/inspect/` — read-only инспекция страницы: снимок DOM, поиск
+  элементов, дерево фреймов и снимки экрана для ИИ-агентов и отладки.
 - `src/browser_stealth/testing/` — фикстуры и моки для тестов потребителей.
 - `tests/unit/` — быстрые тесты без реального браузера; E2E помечены отдельно.
 - `docs/` — документация MkDocs (`mkdocs.yml`).
