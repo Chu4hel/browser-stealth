@@ -8,12 +8,13 @@ Pytest плагин и фикстуры для автотестирования 
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from chutils import SecretManager
+from chutils.secret_manager.providers import DotEnvProvider, EnvProvider
 
 if TYPE_CHECKING:
     from browser_stealth.testing.mocks import (
@@ -128,43 +129,46 @@ def mock_selenium_driver() -> Callable[..., MockSeleniumDriver]:
 
 
 def load_env_file(path: Path | None = None) -> None:
-    """Загружает переменные из .env файла в os.environ (без перезаписи существующих).
+    """Загружает переменные из .env файла в окружение процесса (без перезаписи существующих).
 
     Позволяет использовать секреты локально в файле .env или в CI/CD через GitHub Secrets.
+
+    Args:
+        path: Путь к .env файлу. Если None, используется .env в текущем рабочем каталоге.
     """
-    if path is None:
-        path = Path.cwd() / ".env"
-    if not path.is_file():
+    target = path if path is not None else Path.cwd() / ".env"
+    if not target.is_file():
         return
     try:
-        with open(path, encoding="utf-8") as f:
-            for raw_line in f:
-                line = raw_line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if line.startswith("export "):
-                    line = line[7:].strip()
-                if "=" in line:
-                    key, _, val = line.partition("=")
-                    key = key.strip()
-                    val = val.strip().strip("'\"")
-                    if key and key not in os.environ:
-                        os.environ[key] = val
+        # DotEnvProvider внутри вызывает load_dotenv(override=False) и заполняет окружение процесса.
+        DotEnvProvider(dotenv_path=str(target)).get("__browser_stealth_probe__", "browser_stealth")
     except Exception:
         pass
 
 
 def get_e2e_proxy() -> str | None:
-    """Возвращает адрес прокси для E2E тестов из переменных окружения или .env файла."""
+    """Возвращает адрес прокси для E2E тестов из переменных окружения или .env файла.
+
+    Returns:
+        Строка прокси из TEST_PROXY/E2E_PROXY/PROXY_URL или None, если она не задана.
+    """
     load_env_file()
+    manager = SecretManager(
+        service_name="browser_stealth_e2e",
+        providers=[EnvProvider()],
+    )
     for var_name in ("TEST_PROXY", "E2E_PROXY", "PROXY_URL"):
-        val = os.environ.get(var_name)
-        if val and val.strip():
+        val = manager.get_secret(var_name)
+        if isinstance(val, str) and val.strip():
             return val.strip()
     return None
 
 
 @pytest.fixture(scope="session")
 def e2e_proxy() -> str | None:
-    """Сессионная фикстура прокси для E2E и Heavy тестов."""
+    """Сессионная фикстура прокси для E2E и Heavy тестов.
+
+    Returns:
+        Строка прокси для E2E-тестов или None, если она не задана.
+    """
     return get_e2e_proxy()
