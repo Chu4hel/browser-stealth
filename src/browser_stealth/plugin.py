@@ -30,7 +30,12 @@ class BrowserStealthPluginImpl(BrowserStealthPlugin):
         return "browser_stealth"
 
     def apply_playwright(self, context: Any, **kwargs: Any) -> None:
-        """Применяет расширенные стелс-патчи к Playwright."""
+        """Применяет расширенные стелс-патчи к Playwright.
+
+        Args:
+            context: Объект BrowserContext или Page Playwright.
+            **kwargs: Готовый AntidetectConfig в ключе config либо параметры для его создания.
+        """
         config = kwargs.get("config")
         if config is None:
             config = AntidetectConfig(**kwargs) if kwargs else AntidetectConfig.preset_minimal()
@@ -45,14 +50,24 @@ class BrowserStealthPluginImpl(BrowserStealthPlugin):
             asyncio.run(apply_antidetect_playwright(context, config=config))
 
     def apply_selenium(self, driver: Any, **kwargs: Any) -> None:
-        """Применяет расширенные стелс-патчи к Selenium WebDriver."""
+        """Применяет расширенные стелс-патчи к Selenium WebDriver.
+
+        Args:
+            driver: Экземпляр Selenium WebDriver.
+            **kwargs: Готовый AntidetectConfig в ключе config либо параметры для его создания.
+        """
         config = kwargs.get("config")
         if config is None:
             config = AntidetectConfig(**kwargs) if kwargs else AntidetectConfig.preset_minimal()
         apply_antidetect_selenium(driver, config=config)
 
     def apply_nodriver(self, tab: Any, **kwargs: Any) -> None:
-        """Применяет расширенные стелс-патчи к nodriver Tab."""
+        """Применяет расширенные стелс-патчи к nodriver Tab.
+
+        Args:
+            tab: Вкладка nodriver Tab.
+            **kwargs: Готовый AntidetectConfig в ключе config либо параметры для его создания.
+        """
         config = kwargs.get("config")
         if config is None:
             config = (
