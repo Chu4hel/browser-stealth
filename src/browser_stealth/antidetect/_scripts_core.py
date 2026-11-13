@@ -312,11 +312,6 @@ _JS_CORE_PART = """(function() {{
     // 0.4. Синхронная каскадная изоляция дочерних контекстов (Iframe Cross-realm inspection)
     const patchedWindows = new WeakSet();
     const webdriverGetter = makeNative(() => undefined, 'get webdriver');
-    const pluginsList = [
-        {{ name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
-        {{ name: 'Chrome PDF Viewer', filename: 'mhjfbmdmgglogagaboenashesapgbbbi', description: 'Google Chrome PDF Viewer' }}
-    ];
-    const pluginsGetter = makeNative(() => pluginsList, 'get plugins');
 
     const patchSubWindow = (subWin) => {{
         if (!subWin) return;
@@ -374,13 +369,8 @@ _JS_CORE_PART = """(function() {{
                         configurable: true
                     }});
                 }} catch (e) {{}}
-                try {{
-                    Object.defineProperty(subWin.navigator, 'plugins', {{
-                        get: pluginsGetter,
-                        enumerable: true,
-                        configurable: true
-                    }});
-                }} catch (e) {{}}
+                // navigator.plugins в дочерних окнах тоже оставляем нативным:
+                // фейковый массив ломает instanceof PluginArray и палится детекторами.
 
                 if ({ua_js}) {{
                     try {{

@@ -80,16 +80,12 @@ _JS_SURFACE_PART = """    // 1. Скрытие и очистка navigator.webdr
         }} catch (e) {{}}
     }}
 
-    // 4. Эмуляция navigator.plugins
-    try {{
-        Object.defineProperty(navigator, 'plugins', {{
-            get: pluginsGetter,
-            enumerable: true,
-            configurable: true,
-        }});
-    }} catch (e) {{}}
+    // navigator.plugins НЕ патчим намеренно: Chrome отдает нативный PluginArray
+    // (5 PDF-плагинов, элементы — настоящие Plugin). Подмена на обычный массив ломает
+    // проверку `navigator.plugins instanceof PluginArray` и палится в Sannysoft
+    // (строка "Plugins is of type PluginArray"). Не возвращайте фейковый список.
 
-    // 5. Эмуляция hardwareConcurrency и deviceMemory
+    // 4. Эмуляция hardwareConcurrency и deviceMemory
     try {{
         Object.defineProperty(navigator, 'hardwareConcurrency', {{
             get: makeNative(() => {concurrency_js}, 'get hardwareConcurrency'),
