@@ -21,6 +21,15 @@ from .core import (
     get_browser_launch_args,
     get_client_hints,
 )
+from .flags import (
+    UNSUPPORTED_CHROMIUM_FLAGS,
+    FlagPolicy,
+    UnsupportedFlag,
+    UnsupportedFlagRule,
+    find_unsupported_flags,
+    raise_for_unsupported_flags,
+    sanitize_browser_args,
+)
 from .scripts import (
     DEFAULT_DEVICE_MEMORY,
     DEFAULT_HARDWARE_CONCURRENCY,
@@ -37,7 +46,11 @@ __all__ = [
     "DEFAULT_WEBGL_VENDOR",
     "GET_COPIED_CLIPBOARD_JS",
     "INSTALL_CLIPBOARD_HOOK_JS",
+    "UNSUPPORTED_CHROMIUM_FLAGS",
     "AntidetectConfig",
+    "FlagPolicy",
+    "UnsupportedFlag",
+    "UnsupportedFlagRule",
     "_ensure_nodriver",
     "_ensure_playwright",
     "_ensure_selenium",
@@ -47,7 +60,10 @@ __all__ = [
     "apply_antidetect_selenium",
     "apply_clipboard_isolation",
     "extract_clearance_cookies",
+    "find_unsupported_flags",
     "get_browser_launch_args",
     "get_client_hints",
     "get_isolated_clipboard_text",
+    "raise_for_unsupported_flags",
+    "sanitize_browser_args",
 ]

@@ -25,9 +25,22 @@ from .antidetect.core import (
     get_browser_launch_args,
     get_client_hints,
 )
+from .antidetect.flags import (
+    UNSUPPORTED_CHROMIUM_FLAGS,
+    FlagPolicy,
+    UnsupportedFlag,
+    UnsupportedFlagRule,
+    find_unsupported_flags,
+    raise_for_unsupported_flags,
+    sanitize_browser_args,
+)
 from .bidi.client import BiDiClient
 from .bidi.session import BiDiSession, bidi_session
-from .exceptions import BrowserStealthError, OptionalDependencyError
+from .exceptions import (
+    BrowserStealthError,
+    OptionalDependencyError,
+    UnsupportedBrowserFlagError,
+)
 from .humanize.actions import (
     TouchGestureGenerator,
     TouchPoint,
@@ -69,6 +82,7 @@ __version__ = "0.3.0rc1"
 
 __all__ = [
     "ANTIDETECT_JS_SCRIPT",
+    "UNSUPPORTED_CHROMIUM_FLAGS",
     "AntidetectConfig",
     "BehavioralProfile",
     "BezierCurveGenerator",
@@ -76,6 +90,7 @@ __all__ = [
     "BiDiSession",
     "BrowserProfile",
     "BrowserStealthError",
+    "FlagPolicy",
     "JitterDelayGenerator",
     "KeyboardTypoGenerator",
     "OptionalDependencyError",
@@ -87,6 +102,9 @@ __all__ = [
     "SyncProfileWarmer",
     "TouchGestureGenerator",
     "TouchPoint",
+    "UnsupportedBrowserFlagError",
+    "UnsupportedFlag",
+    "UnsupportedFlagRule",
     "WindMouseGenerator",
     "antidetect",
     "apply_antidetect_nodriver",
@@ -106,6 +124,7 @@ __all__ = [
     "close_tab",
     "concurrency",
     "detect_cf_turnstile",
+    "find_unsupported_flags",
     "fingerprint",
     "get_browser_launch_args",
     "get_client_hints",
@@ -120,6 +139,8 @@ __all__ = [
     "parse_proxy",
     "profiles",
     "proxy",
+    "raise_for_unsupported_flags",
+    "sanitize_browser_args",
     "scroll_to",
     "solve_cf_turnstile",
     "testing",

@@ -384,6 +384,9 @@ def get_browser_launch_args(*, no_sandbox: bool = False) -> list[str]:
         антибот-системами. Скрытие ``navigator.webdriver`` выполняется через
         CDP-инъекцию скрипта антидетекта.
 
+        Пользовательские аргументы запуска проверяются и очищаются функцией
+        :func:`browser_stealth.antidetect.flags.sanitize_browser_args`.
+
     Args:
         no_sandbox: Если True, добавляет флаг ``--no-sandbox`` (рекомендуется только для root Docker-контейнеров).
 
