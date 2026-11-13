@@ -82,6 +82,7 @@ async def launch_nodriver(
     browser_args_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
+    patch_tab_find: bool = True,
     **kwargs: Any,
 ) -> Any:
     """Запускает браузер nodriver с рекомендуемыми стелс-аргументами и AntidetectConfig.
@@ -102,6 +103,8 @@ async def launch_nodriver(
         sanitize_profile_dir: Если True и передан user_data_dir, перед запуском браузера сбрасывает флаги
             аварийного завершения (exit_type="Normal") и очищает остаточные сессии/вкладки,
             предотвращая инфобар восстановления вкладок и детекты антифрода.
+        patch_tab_find: Если True, заменяет ``Tab.find`` безопасной обёрткой, которая ищет текст
+            только в основном документе и не опрашивает сторонние iframe (ошибка -32601).
         **kwargs: Дополнительные параметры для передачи в nodriver.start().
 
     Returns:
@@ -175,19 +178,30 @@ async def launch_nodriver(
 
     register_cleanup(_cleanup_browser)
 
-    # Применение AntidetectConfig к открытой вкладке
-    if apply_config_to_tab:
+    # Разрешение основной вкладки для патча find и применения AntidetectConfig
+    tab = None
+    if apply_config_to_tab or patch_tab_find:
         tab = getattr(browser, "main_tab", None)
         if tab is None:
             tabs = getattr(browser, "tabs", [])
             if tabs:
                 tab = tabs[0]
 
-        if tab is not None:
-            try:
-                await config.apply_to_nodriver(tab)
-            except Exception as exc:
-                logger.debug(f"Не удалось применить AntidetectConfig к вкладке nodriver: {exc}")
+    # Безопасный Tab.find без обхода недоверенных iframe
+    if patch_tab_find and tab is not None:
+        try:
+            from browser_stealth.humanize.safe_find import install_safe_find
+
+            install_safe_find(tab)
+        except Exception as exc:
+            logger.debug(f"Не удалось установить безопасный Tab.find: {exc}")
+
+    # Применение AntidetectConfig к открытой вкладке
+    if apply_config_to_tab and tab is not None:
+        try:
+            await config.apply_to_nodriver(tab)
+        except Exception as exc:
+            logger.debug(f"Не удалось применить AntidetectConfig к вкладке nodriver: {exc}")
 
     return browser
 
@@ -204,6 +218,7 @@ async def nodriver_session(
     browser_args_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
+    patch_tab_find: bool = True,
     **kwargs: Any,
 ) -> AsyncIterator[Any]:
     """Асинхронный контекстный менеджер сессии браузера nodriver с гарантированным закрытием.
@@ -218,6 +233,7 @@ async def nodriver_session(
         browser_args_policy: Политика обработки неподдерживаемых флагов Chromium.
         apply_config_to_tab: Автоматически применить AntidetectConfig к вкладке.
         sanitize_profile_dir: Выполнить санитайзинг профиля перед запуском.
+        patch_tab_find: Заменить ``Tab.find`` безопасной обёрткой без обхода сторонних iframe.
         **kwargs: Дополнительные параметры nodriver.start().
 
     Yields:
@@ -233,6 +249,7 @@ async def nodriver_session(
         browser_args_policy=browser_args_policy,
         apply_config_to_tab=apply_config_to_tab,
         sanitize_profile_dir=sanitize_profile_dir,
+        patch_tab_find=patch_tab_find,
         **kwargs,
     )
     try:

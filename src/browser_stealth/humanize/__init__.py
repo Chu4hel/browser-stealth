@@ -29,6 +29,12 @@ from .math_utils import (
     KeyboardTypoGenerator,
     WindMouseGenerator,
 )
+from .safe_find import (
+    MATCH_ATTRIBUTE,
+    async_find_by_text,
+    install_safe_find,
+    safe_find_element,
+)
 from .turnstile import (
     detect_cf_turnstile,
     is_cf_turnstile_solved,
@@ -45,6 +51,7 @@ from .warmer import (
 
 __all__ = [
     "DEFAULT_SEARCH_QUERIES",
+    "MATCH_ATTRIBUTE",
     "AntidetectConfig",
     "BehavioralProfile",
     "BezierCurveGenerator",
@@ -59,6 +66,7 @@ __all__ = [
     "apply_antidetect_playwright",
     "apply_antidetect_selenium",
     "async_click",
+    "async_find_by_text",
     "async_human_sleep",
     "async_move_mouse",
     "async_scroll_to",
@@ -72,9 +80,11 @@ __all__ = [
     "get_random_search_queries",
     "get_search_engine_config",
     "human_sleep",
+    "install_safe_find",
     "is_cf_turnstile_solved",
     "is_organic_url",
     "move_mouse",
+    "safe_find_element",
     "scroll_to",
     "solve_cf_turnstile",
     "type_text",

@@ -16,6 +16,29 @@ from browser_stealth.logging import get_logger as setup_logger
 
 logger = setup_logger(__name__)
 
+try:  # websockets доступен как транзитивная зависимость nodriver
+    from websockets.exceptions import ConnectionClosed as _WebsocketsConnectionClosed
+except (ImportError, AttributeError):  # pragma: no cover - websockets не установлен
+    _WebsocketsConnectionClosed = None  # type: ignore[assignment,misc]
+
+
+def _is_connection_closed(exc: BaseException) -> bool:
+    """Определяет, вызвано ли исключение закрытием WebSocket-соединения с браузером.
+
+    Args:
+        exc: Перехваченное исключение.
+
+    Returns:
+        True, если браузер закрыт или соединение с CDP оборвано.
+    """
+    if _WebsocketsConnectionClosed is not None and isinstance(exc, _WebsocketsConnectionClosed):
+        return True
+    return type(exc).__name__ in {
+        "ConnectionClosed",
+        "ConnectionClosedError",
+        "ConnectionClosedOK",
+    }
+
 
 async def _run_with_timeout(
     coro: Coroutine[Any, Any, Any],
@@ -28,17 +51,22 @@ async def _run_with_timeout(
         timeout: Таймаут в секундах. Если None, выполняется без таймаута.
 
     Returns:
-        Результат выполнения корутины.
+        Результат выполнения корутины или None, если браузер был закрыт.
 
     Raises:
         TimeoutError: При превышении допустимого таймаута.
     """
-    if timeout is not None:
-        try:
+    try:
+        if timeout is not None:
             return await asyncio.wait_for(coro, timeout=timeout)
-        except TimeoutError as exc:
-            raise TimeoutError(f"Действие превысило допустимый таймаут {timeout}с") from exc
-    return await coro
+        return await coro
+    except TimeoutError as exc:
+        raise TimeoutError(f"Действие превысило допустимый таймаут {timeout}с") from exc
+    except Exception as exc:
+        if _is_connection_closed(exc):
+            logger.debug("Соединение с браузером закрыто, действие прервано штатно: %s", exc)
+            return None
+        raise
 
 
 def _ensure_playwright() -> None:
