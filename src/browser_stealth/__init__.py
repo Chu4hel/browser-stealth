@@ -37,6 +37,7 @@ from .antidetect.flags import (
 )
 from .bidi.client import BiDiClient
 from .bidi.session import BiDiSession, bidi_session
+from .crypto import decrypt_portable, encrypt_portable
 from .exceptions import (
     BrowserStealthError,
     InspectionError,
@@ -73,6 +74,7 @@ from .humanize.turnstile import (
 )
 from .humanize.warmer import ProfileWarmer, SyncProfileWarmer
 from .launchers import camoufox, nodriver
+from .launchers.camoufox import launch_camoufox
 from .launchers.nodriver import close_tab, launch_nodriver, nodriver_session
 from .profiles.manager import ProfileManager
 from .profiles.models import BrowserProfile
@@ -126,7 +128,9 @@ __all__ = [
     "click",
     "close_tab",
     "concurrency",
+    "decrypt_portable",
     "detect_cf_turnstile",
+    "encrypt_portable",
     "find_unsupported_flags",
     "fingerprint",
     "get_browser_launch_args",
@@ -135,6 +139,7 @@ __all__ = [
     "humanize",
     "inspect",
     "is_cf_turnstile_solved",
+    "launch_camoufox",
     "launch_nodriver",
     "launchers",
     "move_mouse",

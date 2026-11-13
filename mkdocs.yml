@@ -53,6 +53,8 @@ nav:
   - Биомеханика и действия (humanize): humanize.md
   - Антидетект и маскировка (antidetect): antidetect.md
   - Инспекция страницы (inspect): inspection.md
+  - Конкурентность и пулы (concurrency): concurrency.md
+  - Портативное шифрование (crypto): crypto.md
   - Менеджер профилей (profiles): profiles.md
   - Управление прокси (proxy): proxy.md
   - Синтез цифровой личности (fingerprint): fingerprint.md

@@ -29,6 +29,8 @@ selenium = ["selenium>=4.15.0"]
 camoufox = ["camoufox>=0.4.0"]
 bidi = ["websockets>=14.0.0"]
 crypto = ["cryptography>=41.0.0"]
+fingerprint = ["browserforge>=1.2.0"]
+redis = ["redis>=5.0.0"]
 testing = ["pytest>=8.0"]
 all = [
     "browser-stealth[playwright,nodriver,selenium,camoufox,bidi,crypto]",

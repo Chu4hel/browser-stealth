@@ -43,14 +43,6 @@ class UnsupportedBrowserFlagError(BrowserStealthError):
         super().__init__(message)
 
 
-try:
-    from chutils.exceptions.base import OptionalDependencyError as _ChutilsOptionalDependencyError
-
-    _BaseOptionalDependencyError = _ChutilsOptionalDependencyError
-except ImportError:
-    _BaseOptionalDependencyError = ImportError
-
-
 class InspectionError(BrowserStealthError):
     """Исключение, возникающее при неудачном чтении состояния страницы.
 
@@ -59,8 +51,12 @@ class InspectionError(BrowserStealthError):
     """
 
 
-class OptionalDependencyError(BrowserStealthError, _BaseOptionalDependencyError):
-    """Исключение, возникающее при отсутствии опциональной зависимости библиотеки."""
+class OptionalDependencyError(BrowserStealthError, ImportError):
+    """Исключение, возникающее при отсутствии опциональной зависимости библиотеки.
+
+    Наследуется также от встроенного ``ImportError``, чтобы код потребителя мог
+    перехватывать отсутствие опциональных пакетов привычным способом.
+    """
 
     def __init__(
         self,

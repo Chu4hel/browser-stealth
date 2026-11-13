@@ -94,7 +94,7 @@ class SessionTabPool:
                 res = tab.evaluate("1 + 1")
                 if inspect.isawaitable(res):
                     res = await res
-                return res == 2
+                return bool(res == 2)
             return True
         except Exception:
             return False

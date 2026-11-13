@@ -129,9 +129,7 @@ def test_pydantic_validator_rejects_mismatched_client_hints() -> None:
         ("windows", "Ubuntu Mono"),
     ],
 )
-def test_pydantic_validator_rejects_foreign_os_fonts(
-    os_target: str, foreign_font: str
-) -> None:
+def test_pydantic_validator_rejects_foreign_os_fonts(os_target: str, foreign_font: str) -> None:
     """Проверяет отклонение шрифтов чужой платформы для каждой ОС."""
     renderers = {
         "macos": "ANGLE (Apple, Apple M1, OpenGL 4.1)",

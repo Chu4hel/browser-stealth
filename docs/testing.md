@@ -74,3 +74,82 @@ pytest_plugins = ["browser_stealth.testing.fixtures"]
 `html_snapshot_recorder`, `mock_nodriver_tab`, `mock_playwright_page`,
 `mock_selenium_driver`. Модуль также регистрирует маркеры `e2e` и `heavy`
 через `pytest_configure`.
+
+Сетевые тесты помечены `e2e` (часть из них дополнительно `heavy`), поэтому их
+можно отделить от быстрых:
+
+```bash
+uv run pytest -m "not e2e"   # быстрые тесты
+uv run pytest -m e2e        # сетевые E2E-стенды
+```
+
+В CI эти наборы запускаются отдельными job: `test` — без e2e на матрице ОС и
+Python, `e2e` — один прогон на Linux.
+
+---
+
+## 5. Снапшоты HTML (`SnapshotRecorder`, `use_html_snapshot`)
+
+`SnapshotRecorder` сохраняет/читает HTML страницы и избавляет тесты от похода в сеть:
+
+```python
+from browser_stealth.testing import SnapshotRecorder
+
+recorder = SnapshotRecorder("tests/snapshots")
+path = recorder.save("login", "<html><body>...</body></html>")
+html = recorder.load("login")
+```
+
+`use_html_snapshot` — контекстный менеджер и декоратор, который подменяет
+страницу мок-объектом:
+
+```python
+from browser_stealth.testing import use_html_snapshot
+
+with use_html_snapshot("login", as_mock="nodriver") as page:
+    ...
+
+with use_html_snapshot("login", as_mock="playwright", record=True, fetcher=fetch_page) as page:
+    ...  # запись и обновление снапшота
+```
+
+Параметр `as_mock` принимает `raw`, `nodriver`, `playwright` или `selenium`.
+
+---
+
+## 6. Запись действий (`DOMActionRecorder`)
+
+Регистратор показывает в странице плавающий HUD с чек-листом, собирает клики,
+ввод, скроллы и мутации DOM, а затем отдаёт структурированный отчёт:
+
+```python
+from browser_stealth.testing import DOMActionRecorder
+
+recorder = DOMActionRecorder(
+    checklist_items=[{"id": "login", "label": "Войти в аккаунт"}],
+    widget_title="Запись сценария",
+)
+await recorder.inject(tab)
+report = await recorder.wait_for_finish(tab, timeout=120)
+print(report.actions)
+```
+
+`inject` возвращает `bool` — удалось ли внедрить перехватчик; `poll` забирает
+накопленные действия без ожидания.
+
+---
+
+## 7. Сессия живого браузера (`LiveBrowserSession`)
+
+Изолированный профиль во временном каталоге с гарантированным уничтожением
+процессов и очисткой:
+
+```python
+from browser_stealth.testing import LiveBrowserSession
+
+with LiveBrowserSession(browser_name="chromium") as session:
+    print(session.user_data_dir)
+```
+
+Параметры: `user_data_dir`, `auto_cleanup_dir`, `keep_profile_on_failure`
+(сохранить профиль упавшего теста для отладки).

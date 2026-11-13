@@ -255,7 +255,7 @@ async def async_touch_tap(
                 radius_y=p0.radius_y,
                 rotation_angle=p0.rotation_angle,
                 force=p0.force,
-                id=1,
+                id_=1,
             )
             await page.send(
                 cdp_input.dispatch_touch_event(type_="touchStart", touch_points=[cdp_pt])
@@ -310,7 +310,7 @@ async def async_touch_swipe(
                     radius_y=pt.radius_y,
                     rotation_angle=pt.rotation_angle,
                     force=pt.force,
-                    id=1,
+                    id_=1,
                 )
                 await page.send(
                     cdp_input.dispatch_touch_event(type_=event_type, touch_points=[cdp_pt])

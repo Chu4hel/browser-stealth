@@ -11,8 +11,9 @@ nodriver и Selenium: маскировка фингерпринта, эмуля�
 ## Стек и окружение
 
 - Python >= 3.11; управление зависимостями — `uv` (`uv.lock`).
-- Обязательная зависимость: `pydantic>=2.10`; браузерные бэкенды — опциональные
-  extra-группы (`playwright`, `nodriver`, `selenium`, `camoufox`, `bidi`, `crypto`).
+- Обязательные зависимости: `pydantic>=2.10`, `chutils>=4.0.0`; опциональные
+  extra-группы: браузерные бэкенды (`playwright`, `nodriver`, `selenium`, `camoufox`,
+  `bidi`), а также `crypto`, `fingerprint`, `redis` и `testing`.
 - Инструменты разработки: `ruff`, `mypy` (strict), `pytest`, `chutils dev ai-lint`.
 
 ## Команды
@@ -39,6 +40,8 @@ uv run chutils dev sync-env               # синхронизировать .en
   camoufox и BiDi.
 - `src/browser_stealth/profiles/` — профили, гигиена, ротация и прогрев.
 - `src/browser_stealth/proxy/` — модели, парсер, адаптеры, кэш и хранилище секретов.
+- `src/browser_stealth/concurrency/` — очереди задач, пулы воркеров и вкладок,
+  лимитер и reaper простоя; `crypto.py` — портативное шифрование строк.
 - `src/browser_stealth/inspect/` — read-only инспекция страницы: снимок DOM, поиск
   элементов, дерево фреймов и снимки экрана для ИИ-агентов и отладки.
 - `src/browser_stealth/testing/` — фикстуры и моки для тестов потребителей.

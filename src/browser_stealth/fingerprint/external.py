@@ -1,4 +1,4 @@
-"""Адаптеры для внешних генераторов отпечатков (browserforge, fpgen)."""
+"""Адаптер внешнего генератора отпечатков browserforge (Apify)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from .models import (
 try:
     from browserforge.fingerprints import FingerprintGenerator
 except ImportError:
-    FingerprintGenerator = None  # type: ignore[assignment,misc]
+    FingerprintGenerator = None
 
 
 def _ensure_browserforge() -> None:
@@ -30,23 +30,9 @@ def _ensure_browserforge() -> None:
     except (ImportError, ValueError):
         raise OptionalDependencyError(
             "Модуль 'browserforge' не установлен. Для использования байесовской генерации "
-            "установите его: pip install browserforge или pip install chutils[fingerprint].",
+            'установите extra: pip install "browser-stealth[fingerprint]".',
             dependency="browserforge",
             hint="Выполните pip install browserforge",
-        )
-
-
-def _ensure_fpgen() -> None:
-    """Проверяет доступность библиотеки fpgen."""
-    try:
-        if importlib.util.find_spec("fpgen") is None:
-            raise ImportError()
-    except (ImportError, ValueError):
-        raise OptionalDependencyError(
-            "Модуль 'fpgen' не установлен. Для использования fpgen "
-            "установите его: pip install fpgen.",
-            dependency="fpgen",
-            hint="Выполните pip install fpgen",
         )
 
 

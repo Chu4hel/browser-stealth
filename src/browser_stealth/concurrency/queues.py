@@ -309,7 +309,7 @@ class RedisTaskQueue(BaseTaskQueue):
             raise OptionalDependencyError(
                 "Библиотека redis не установлена.",
                 dependency="redis",
-                hint="Установите её с помощью 'pip install chutils[redis]'.",
+                hint="Установите её с помощью 'pip install \"browser-stealth[redis]\"'.",
             )
         self.redis_url = redis_url
         self.queue_name = queue_name

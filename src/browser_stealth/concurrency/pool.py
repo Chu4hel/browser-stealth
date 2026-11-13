@@ -194,7 +194,7 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
         self._pool_lock = asyncio.Lock()
 
         self._idle_reaper = IdleBrowserReaper(
-            close_worker_fn=self.close_worker,
+            close_worker_fn=self._close_worker_silently,
             is_worker_busy_fn=self.is_worker_busy,
             get_active_workers_fn=lambda: list(self._workers.keys()),
             get_last_used_fn=lambda k: self._worker_last_used.get(k, time.time()),
@@ -347,6 +347,14 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
         """
         async with self._pool_lock:
             return await self._close_worker_internal(key)
+
+    async def _close_worker_silently(self, key: TKey) -> None:
+        """Закрывает воркер для reaper'а простоя, отбрасывая результат.
+
+        Args:
+            key: Идентификатор воркера.
+        """
+        await self.close_worker(key)
 
     async def close_all(self) -> None:
         """Останавливает мониторинг простоя и закрывает все активные воркеры."""
