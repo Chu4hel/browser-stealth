@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import random
+from typing import Any
 
 from browser_stealth.exceptions import OptionalDependencyError
 
@@ -16,6 +17,7 @@ from .models import (
     WebGLFingerprint,
 )
 
+FingerprintGenerator: Any
 try:
     from browserforge.fingerprints import FingerprintGenerator
 except ImportError:

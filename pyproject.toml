@@ -31,7 +31,7 @@ bidi = ["websockets>=14.0.0"]
 crypto = ["cryptography>=41.0.0"]
 fingerprint = ["browserforge>=1.2.0"]
 redis = ["redis>=5.0.0"]
-testing = ["pytest>=8.0"]
+testing = ["pytest>=8.0", "httpx>=0.27.0"]
 all = [
     "browser-stealth[playwright,nodriver,selenium,camoufox,bidi,crypto]",
 ]
@@ -51,6 +51,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-mock>=3.16.0",
+    "httpx>=0.27.0",
     "ruff>=0.16.9",
     "selenium>=4.50.0",
     "websockets>=17.1",

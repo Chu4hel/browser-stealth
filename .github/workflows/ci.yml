@@ -84,6 +84,8 @@ jobs:
           enable-cache: true
       - name: Set up Python
         run: uv python install 3.12
+      - name: Allow unprivileged user namespaces (AppArmor)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: Install dependencies
         run: uv sync --all-extras
       - name: Run E2E tests
