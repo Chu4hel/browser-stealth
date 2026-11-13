@@ -188,6 +188,7 @@ def test_safe_find_js_skips_hidden_and_script_nodes() -> None:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=30,
     )
 

@@ -136,6 +136,7 @@ def test_window_screen_geometry_node_runtime() -> None:
         input=node_runner,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=10,
         check=False,
     )

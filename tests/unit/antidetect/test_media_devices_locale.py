@@ -93,6 +93,7 @@ def test_media_devices_w3c_permissions_and_labels_node() -> None:
         input=node_runner,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     assert res.returncode == 0, f"Ошибка исполнения JS в Node.js:\n{res.stderr}"
@@ -133,6 +134,7 @@ def test_media_devices_russian_locale_in_node() -> None:
         input=node_runner,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     assert res.returncode == 0, f"Ошибка исполнения JS в Node.js:\n{res.stderr}"

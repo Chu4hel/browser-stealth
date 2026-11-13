@@ -477,6 +477,7 @@ def test_collect_js_returns_semantic_snapshot() -> None:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=30,
     )
 

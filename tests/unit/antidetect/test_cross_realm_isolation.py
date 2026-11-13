@@ -161,6 +161,7 @@ def test_iframe_content_window_synchronous_isolation_node() -> None:
         input=node_runner,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=10,
         check=False,
     )
@@ -224,6 +225,7 @@ def test_worker_preamble_and_constructor_node() -> None:
         input=node_runner,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=10,
         check=False,
     )

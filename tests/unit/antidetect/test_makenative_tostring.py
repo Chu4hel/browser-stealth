@@ -99,6 +99,7 @@ def test_makenative_v8_node_runtime_cloaking() -> None:
         input=node_runner,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     assert res.returncode == 0, f"Ошибка исполнения JS в Node.js:\n{res.stderr}"
