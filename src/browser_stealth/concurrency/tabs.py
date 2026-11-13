@@ -9,15 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import logging
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from browser_stealth.launchers.nodriver import close_tab as _default_close_tab
+from browser_stealth.logging import get_logger as setup_logger
 
-logger = logging.getLogger("browser_stealth.concurrency.tabs")
+logger = setup_logger(__name__)
 
 
 @dataclass
@@ -60,11 +60,22 @@ class SessionTabPool:
         return len(self._sessions)
 
     def get_session(self, session_id: str) -> TabSession | None:
-        """Возвращает метаданные сессии по ID без изменения счетчиков."""
+        """Возвращает метаданные сессии по ID без изменения счетчиков.
+
+        Args:
+            session_id: Идентификатор сессии.
+
+        Returns:
+            Метаданные сессии TabSession или None, если сессия не зарегистрирована.
+        """
         return self._sessions.get(session_id)
 
     def list_session_ids(self) -> list[str]:
-        """Возвращает список идентификаторов всех зарегистрированных сессий."""
+        """Возвращает список идентификаторов всех зарегистрированных сессий.
+
+        Returns:
+            Список строковых идентификаторов сессий.
+        """
         return list(self._sessions.keys())
 
     async def is_tab_alive(self, tab: Any) -> bool:

@@ -228,18 +228,36 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
         self._max_parallel_workers = max(1, value)
 
     def get_worker_lock(self, key: TKey) -> asyncio.Lock:
-        """Возвращает индивидуальный лок для воркера, создавая его при необходимости."""
+        """Возвращает индивидуальный лок для воркера, создавая его при необходимости.
+
+        Args:
+            key: Идентификатор воркера.
+
+        Returns:
+            Экземпляр asyncio.Lock, привязанный к указанному воркеру.
+        """
         if key not in self._worker_locks:
             self._worker_locks[key] = asyncio.Lock()
         return self._worker_locks[key]
 
     def is_worker_busy(self, key: TKey) -> bool:
-        """Проверяет, выполняет ли воркер задачу в данный момент."""
+        """Проверяет, выполняет ли воркер задачу в данный момент.
+
+        Args:
+            key: Идентификатор воркера.
+
+        Returns:
+            True, если лок воркера захвачен, иначе False.
+        """
         lock = self._worker_locks.get(key)
         return lock.locked() if lock is not None else False
 
     def touch_worker(self, key: TKey) -> None:
-        """Обновляет метку времени активности воркера."""
+        """Обновляет метку времени активности воркера.
+
+        Args:
+            key: Идентификатор воркера.
+        """
         self._worker_last_used[key] = time.time()
 
     async def get_or_create_worker(self, key: TKey) -> TWorker:
@@ -275,7 +293,14 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
             return worker
 
     async def evict_lru_worker(self, exclude_key: TKey | None = None) -> TKey | None:
-        """Вытесняет и закрывает наименее недавно использованный свободный воркер."""
+        """Вытесняет и закрывает наименее недавно использованный свободный воркер.
+
+        Args:
+            exclude_key: Ключ воркера, который нельзя вытеснять (например, только что запрошенный).
+
+        Returns:
+            Ключ вытесненного воркера или None, если свободных воркеров не нашлось.
+        """
         candidates: list[tuple[TKey, float]] = []
         for k, last_used in self._worker_last_used.items():
             if k == exclude_key or k not in self._workers:
@@ -340,7 +365,11 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
         await self._idle_reaper.stop()
 
     async def reap_idle_workers(self) -> int:
-        """Ручной триггер закрытия простаивающих воркеров."""
+        """Ручной триггер закрытия простаивающих воркеров.
+
+        Returns:
+            Количество закрытых простаивающих воркеров.
+        """
         return await self._idle_reaper.reap()
 
 
