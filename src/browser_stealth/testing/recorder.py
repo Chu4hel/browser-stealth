@@ -4,18 +4,24 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging  # chutils: ignore[ChutilsIntegrationRule]
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from chutils.time import utc_now as _chutils_utc_now
 
 from browser_stealth.fs import atomic_write, ensure_dir
+from browser_stealth.logging import get_logger
 
 
 def utc_now() -> datetime:
-    """Возвращает текущее время в формате UTC."""
-    return datetime.now(UTC)
+    """Возвращает текущее время в формате UTC.
+
+    Returns:
+        Текущее время с информацией о часовом поясе UTC.
+    """
+    return cast(datetime, _chutils_utc_now())
 
 
 from .dom_models import (
@@ -29,7 +35,7 @@ from .dom_scripts import (
     build_inject_recorder_hud_script,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _safe_extract_dict(val: Any) -> dict[str, Any]:

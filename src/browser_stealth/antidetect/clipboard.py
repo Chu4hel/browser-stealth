@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import inspect
 import json
-import logging
 from typing import Any
 
-logger = logging.getLogger("browser_stealth.antidetect.clipboard")
+from browser_stealth.logging import get_logger
+
+logger = get_logger(__name__)
 
 INSTALL_CLIPBOARD_HOOK_JS = """
 (() => {

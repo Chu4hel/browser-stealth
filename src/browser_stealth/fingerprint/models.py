@@ -145,7 +145,14 @@ class FingerprintProfile(BaseModel):
 
     @model_validator(mode="after")
     def validate_os_gpu_consistency(self) -> FingerprintProfile:
-        """Проверяет непротиворечивость операционной системы и рендерера WebGL/Client Hints."""
+        """Проверяет непротиворечивость операционной системы и рендерера WebGL/Client Hints.
+
+        Returns:
+            Проверенный экземпляр профиля (self).
+
+        Raises:
+            ValueError: Если ОС, рендерер или Client Hints противоречат друг другу.
+        """
         os_lower = self.os.lower()
         renderer = self.webgl.renderer if self.webgl else ""
         platform_ch = (self.client_hints or {}).get("platform", "")

@@ -74,7 +74,8 @@ class UnsupportedFlag:
         return self.rule.flag
 
 
-#: Реестр известных неподдерживаемых и скомпрометированных флагов Chromium.
+# Реестр известных неподдерживаемых и скомпрометированных флагов Chromium.
+
 UNSUPPORTED_CHROMIUM_FLAGS: tuple[UnsupportedFlagRule, ...] = (
     UnsupportedFlagRule(
         flag="--disable-blink-features",
