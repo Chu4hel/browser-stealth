@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+import logging  # chutils: ignore[ChutilsIntegrationRule] — фасад отдаёт stdlib-логгеры по имени: потребитель и UI навешивают свои хендлеры, а setup_logger навязал бы библиотеке собственные хендлеры и файловый вывод
 
 _ROOT_LOGGER_NAME = "browser_stealth"
 
