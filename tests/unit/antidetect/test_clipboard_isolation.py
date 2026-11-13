@@ -1,5 +1,6 @@
 import sys
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from browser_stealth.antidetect.clipboard import (
@@ -44,7 +45,6 @@ async def test_apply_clipboard_isolation_nodriver(monkeypatch: pytest.MonkeyPatc
     assert result is True
     assert tab.send.await_count == 1
     assert tab.evaluate.await_count == 1
-
 
 
 @pytest.mark.asyncio

@@ -1,4 +1,5 @@
 from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from browser_stealth.proxy.cache import BoundedMemoryCacheBackend

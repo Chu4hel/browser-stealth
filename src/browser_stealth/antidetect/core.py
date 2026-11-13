@@ -330,6 +330,13 @@ async def apply_antidetect_nodriver(
         except Exception:
             pass
 
+    # 2.2. Эмуляция часового пояса через CDP Emulation при наличии timezone
+    if config is not None and config.timezone:
+        try:
+            await tab.send(emulation.set_timezone_override(timezone_id=config.timezone))
+        except Exception:
+            pass
+
     script = (
         config.get_init_script()
         if config is not None
@@ -344,7 +351,11 @@ async def apply_antidetect_nodriver(
         )
     )
     # Двойная инъекция:
-    # 3. Регистрация на новые документы (будущие навигации, редиректы, перезагрузки)
+    # 3. Включение домена Page и регистрация на новые документы (будущие навигации, редиректы, перезагрузки)
+    try:
+        await tab.send(page.enable())
+    except Exception:
+        pass
     await tab.send(page.add_script_to_evaluate_on_new_document(source=script))
 
     # 4. Мгновенное применение к уже открытой текущей странице (если вкладка активна)
@@ -372,6 +383,9 @@ def get_browser_launch_args(*, no_sandbox: bool = False) -> list[str]:
         вызывают системный инфобар о неподдерживаемых флагах или детектируются
         антибот-системами. Скрытие ``navigator.webdriver`` выполняется через
         CDP-инъекцию скрипта антидетекта.
+
+        Пользовательские аргументы запуска проверяются и очищаются функцией
+        :func:`browser_stealth.antidetect.flags.sanitize_browser_args`.
 
     Args:
         no_sandbox: Если True, добавляет флаг ``--no-sandbox`` (рекомендуется только для root Docker-контейнеров).

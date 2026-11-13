@@ -11,6 +11,7 @@ from . import (
     concurrency,
     fingerprint,
     humanize,
+    inspect,
     launchers,
     profiles,
     proxy,
@@ -25,9 +26,24 @@ from .antidetect.core import (
     get_browser_launch_args,
     get_client_hints,
 )
+from .antidetect.flags import (
+    UNSUPPORTED_CHROMIUM_FLAGS,
+    FlagPolicy,
+    UnsupportedFlag,
+    UnsupportedFlagRule,
+    find_unsupported_flags,
+    raise_for_unsupported_flags,
+    sanitize_browser_args,
+)
 from .bidi.client import BiDiClient
 from .bidi.session import BiDiSession, bidi_session
-from .exceptions import BrowserStealthError, OptionalDependencyError
+from .crypto import decrypt_portable, encrypt_portable
+from .exceptions import (
+    BrowserStealthError,
+    InspectionError,
+    OptionalDependencyError,
+    UnsupportedBrowserFlagError,
+)
 from .humanize.actions import (
     TouchGestureGenerator,
     TouchPoint,
@@ -58,6 +74,7 @@ from .humanize.turnstile import (
 )
 from .humanize.warmer import ProfileWarmer, SyncProfileWarmer
 from .launchers import camoufox, nodriver
+from .launchers.camoufox import launch_camoufox
 from .launchers.nodriver import close_tab, launch_nodriver, nodriver_session
 from .profiles.manager import ProfileManager
 from .profiles.models import BrowserProfile
@@ -65,10 +82,11 @@ from .proxy.models import ProxyConfig, ProxyHealthResult
 from .proxy.parser import parse_proxy
 from .proxy.pool import ProxyPool
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "ANTIDETECT_JS_SCRIPT",
+    "UNSUPPORTED_CHROMIUM_FLAGS",
     "AntidetectConfig",
     "BehavioralProfile",
     "BezierCurveGenerator",
@@ -76,6 +94,8 @@ __all__ = [
     "BiDiSession",
     "BrowserProfile",
     "BrowserStealthError",
+    "FlagPolicy",
+    "InspectionError",
     "JitterDelayGenerator",
     "KeyboardTypoGenerator",
     "OptionalDependencyError",
@@ -87,6 +107,9 @@ __all__ = [
     "SyncProfileWarmer",
     "TouchGestureGenerator",
     "TouchPoint",
+    "UnsupportedBrowserFlagError",
+    "UnsupportedFlag",
+    "UnsupportedFlagRule",
     "WindMouseGenerator",
     "antidetect",
     "apply_antidetect_nodriver",
@@ -105,13 +128,18 @@ __all__ = [
     "click",
     "close_tab",
     "concurrency",
+    "decrypt_portable",
     "detect_cf_turnstile",
+    "encrypt_portable",
+    "find_unsupported_flags",
     "fingerprint",
     "get_browser_launch_args",
     "get_client_hints",
     "human_sleep",
     "humanize",
+    "inspect",
     "is_cf_turnstile_solved",
+    "launch_camoufox",
     "launch_nodriver",
     "launchers",
     "move_mouse",
@@ -120,6 +148,8 @@ __all__ = [
     "parse_proxy",
     "profiles",
     "proxy",
+    "raise_for_unsupported_flags",
+    "sanitize_browser_args",
     "scroll_to",
     "solve_cf_turnstile",
     "testing",

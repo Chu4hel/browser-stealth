@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from browser_stealth.fs import atomic_write, ensure_dir
 
@@ -42,6 +42,12 @@ class ScreenFingerprint(BaseModel):
     )
     avail_height: int = Field(
         default=1040, description="Доступная высота экрана за вычетом панели задач."
+    )
+    avail_top: int = Field(
+        default=0, description="Отступ доступной области экрана сверху (меню/панель задач)."
+    )
+    avail_left: int = Field(
+        default=0, description="Отступ доступной области экрана слева (панель/док)."
     )
     device_pixel_ratio: float = Field(
         default=1.0, description="Масштабирование дисплея (window.devicePixelRatio)."
@@ -103,6 +109,7 @@ class FingerprintProfile(BaseModel):
     )
     os: str = Field(default="windows", description="Целевая операционная система.")
     browser: str = Field(default="chrome", description="Эмулируемый браузер.")
+    locale: str = Field(default="en-US", description="Локаль операционной системы.")
     user_agent: str = Field(
         default=(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -125,6 +132,9 @@ class FingerprintProfile(BaseModel):
     media_devices: list[MediaDeviceItem] = Field(
         default_factory=list, description="Список эмулируемых медиаустройств."
     )
+    fonts: list[str] = Field(
+        default_factory=list, description="Список системных шрифтов, согласованный с ОС профиля."
+    )
     client_hints: dict[str, Any] = Field(
         default_factory=dict, description="Словарь согласованных Client Hints."
     )
@@ -132,6 +142,77 @@ class FingerprintProfile(BaseModel):
         default="procedural",
         description="Источник генерации: 'procedural', 'browserforge' или 'fpgen'.",
     )
+
+    @model_validator(mode="after")
+    def validate_os_gpu_consistency(self) -> FingerprintProfile:
+        """Проверяет непротиворечивость операционной системы и рендерера WebGL/Client Hints.
+
+        Returns:
+            Проверенный экземпляр профиля (self).
+
+        Raises:
+            ValueError: Если ОС, рендерер или Client Hints противоречат друг другу.
+        """
+        os_lower = self.os.lower()
+        renderer = self.webgl.renderer if self.webgl else ""
+        platform_ch = (self.client_hints or {}).get("platform", "")
+
+        if os_lower in ("macos", "darwin", "mac"):
+            if "Direct3D" in renderer or "D3D" in renderer:
+                raise ValueError(
+                    f"Неконсистентный профиль: на платформе macOS рендерер WebGL не может использовать Direct3D ({renderer})."
+                )
+            if platform_ch and platform_ch != "macOS":
+                raise ValueError(
+                    f"Неконсистентный профиль: для ОС {self.os} ожидается platform 'macOS' в client_hints, получено '{platform_ch}'."
+                )
+        elif os_lower in ("linux",):
+            if "Direct3D" in renderer or "D3D" in renderer:
+                raise ValueError(
+                    f"Неконсистентный профиль: на платформе Linux рендерер WebGL не может использовать Direct3D ({renderer})."
+                )
+            if platform_ch and platform_ch != "Linux":
+                raise ValueError(
+                    f"Неконсистентный профиль: для ОС {self.os} ожидается platform 'Linux' в client_hints, получено '{platform_ch}'."
+                )
+        elif os_lower in ("windows", "win"):
+            if platform_ch and platform_ch != "Windows":
+                raise ValueError(
+                    f"Неконсистентный профиль: для ОС {self.os} ожидается platform 'Windows' в client_hints, получено '{platform_ch}'."
+                )
+
+        self._validate_fonts_consistency(os_lower)
+        return self
+
+    def _validate_fonts_consistency(self, os_lower: str) -> None:
+        """Проверяет, что системные шрифты профиля соответствуют заявленной ОС.
+
+        Args:
+            os_lower: Операционная система профиля в нижнем регистре.
+
+        Raises:
+            ValueError: Если список шрифтов содержит шрифты чужой платформы.
+        """
+        if not self.fonts:
+            return
+
+        from .database import LINUX_ONLY_FONTS, MACOS_ONLY_FONTS, WINDOWS_ONLY_FONTS
+
+        if os_lower in ("macos", "darwin", "mac"):
+            foreign = WINDOWS_ONLY_FONTS | LINUX_ONLY_FONTS
+        elif os_lower in ("linux",):
+            foreign = WINDOWS_ONLY_FONTS | MACOS_ONLY_FONTS
+        elif os_lower in ("windows", "win"):
+            foreign = MACOS_ONLY_FONTS | LINUX_ONLY_FONTS
+        else:
+            return
+
+        incompatible = sorted({font for font in self.fonts if font in foreign})
+        if incompatible:
+            raise ValueError(
+                f"Неконсистентный профиль: для ОС {self.os} список шрифтов содержит "
+                f"шрифты чужой платформы: {', '.join(incompatible)}."
+            )
 
     def to_antidetect_config(self, stealth_minimal: bool = True) -> AntidetectConfig:
         """Конвертирует профиль в AntidetectConfig для браузерных движков.
@@ -157,11 +238,15 @@ class FingerprintProfile(BaseModel):
             user_agent=self.user_agent,
             screen_width=self.screen.width,
             screen_height=self.screen.height,
+            screen_avail_width=self.screen.avail_width,
             screen_avail_height=self.screen.avail_height,
+            screen_avail_top=self.screen.avail_top,
+            screen_avail_left=self.screen.avail_left,
             device_pixel_ratio=self.screen.device_pixel_ratio,
             media_devices=[d.model_dump() for d in self.media_devices]
             if self.media_devices
             else None,
+            locale=self.locale,
         )
 
     def to_dict(self) -> dict[str, Any]:

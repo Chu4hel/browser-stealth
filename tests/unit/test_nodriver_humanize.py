@@ -348,6 +348,7 @@ async def test_async_type_text_nodriver_paste_dom_setter() -> None:
         paste_threshold=10,
         paste_delay_before=(0.0, 0.0),
         paste_delay_after=(0.0, 0.0),
+        paste_mode="dom",
     )
 
     # evaluate должен быть вызван с JS кодом вставки

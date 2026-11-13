@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from browser_stealth.lifecycle import patch_windows_asyncio_transport_cleanup
 

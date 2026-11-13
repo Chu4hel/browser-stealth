@@ -1,4 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from browser_stealth.concurrency.tabs import SessionTabPool
@@ -63,6 +64,7 @@ async def test_session_tab_pool_ttl_eviction() -> None:
     assert pool.active_session_count == 1
 
     import asyncio
+
     await asyncio.sleep(0.02)
 
     # При создании s2, сессия s1 должна закрыться по TTL

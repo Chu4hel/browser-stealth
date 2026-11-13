@@ -17,3 +17,8 @@ wheels/
 *.log
 .idea/
 site/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example

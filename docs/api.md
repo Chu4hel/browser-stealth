@@ -14,6 +14,10 @@
 | `apply_antidetect_selenium` | Применение CDP-маскировки в Selenium WebDriver |
 | `extract_clearance_cookies` | Извлечение cookies и User-Agent для авторизованных TLS-запросов |
 | `get_browser_launch_args` | Набор обязательных аргументов командной строки Chromium для обхода детектов |
+| `sanitize_browser_args` | Проверка и удаление неподдерживаемых флагов Chromium из списка аргументов |
+| `find_unsupported_flags` | Диагностика: поиск опасных флагов Chromium без изменения списка |
+| `raise_for_unsupported_flags` | Строгая валидация аргументов с выбросом `UnsupportedBrowserFlagError` |
+| `FlagPolicy` | Политика обработки опасных флагов: `SANITIZE`, `ERROR`, `IGNORE` |
 
 ---
 
@@ -77,3 +81,64 @@
 | `FingerprintSynthesizer` | Процедурный генератор непротиворечивых аппаратных профилей |
 | `FingerprintProfile` | Структурированная модель цифровой личности |
 | `BrowserForgeProvider` | Интеграция с ML-генератором `browserforge` |
+
+---
+
+## 7. Модуль `browser_stealth.inspect`
+
+Read-only инспекция страницы для ИИ-агентов и отладки. Подробнее — [Инспекция страницы](inspection.md).
+
+| Имя | Описание |
+|---|---|
+| `snapshot` | Компактный снимок страницы: URL, заголовок, viewport и список узлов с ролями, именами, селекторами и координатами |
+| `find` | Поиск узлов по тексту, роли или CSS-селектору с возвратом описаний и селекторов |
+| `screenshot` | Снимок экрана (в том числе всей страницы) в файл или base64 |
+| `frames` | Плоское дерево фреймов с `id`, `parent_id`, `url` и глубиной |
+| `InspectionError` | Общее исключение чтения страницы (вкладка недоступна, CDP-ошибка, неверный ответ) |
+
+---
+
+## 8. Модуль `browser_stealth.concurrency`
+
+Очереди, пулы и ограничители нагрузки. Подробнее — [Конкурентность и пулы](concurrency.md).
+
+| Имя | Описание |
+|---|---|
+| `ScrapingTask` | Dataclass задачи: URL, приоритет, payload, попытки, `dedup_key` |
+| `BaseTaskQueue` | Абстрактный интерфейс очереди (`push`/`pop`/`complete`/`fail`) |
+| `InMemoryTaskQueue` | Приоритетная очередь в памяти с дедупликацией |
+| `PersistentTaskQueue` | Очередь с хранением состояния в SQLite |
+| `RedisTaskQueue` | Распределённая очередь на Redis ZSET (extra `redis`) |
+| `WorkerPool` | Пул воркеров с sync/async-обработчиком и backoff-повторами |
+| `BrowserProcessPool` | Супервизор браузерных процессов с LRU и scale-to-zero |
+| `SessionTabPool`, `TabSession` | Пул сессионных вкладок с TTL и LRU |
+| `DomainRateLimiter` | Лимит частоты и параллельности по домену |
+| `IdleReaper`, `IdleBrowserReaper` | Фоновое закрытие простаивающих воркеров |
+| `IdleReaperConfig`, `IdleBrowserReaperConfig` | Настройки порогов простоя |
+
+---
+
+## 9. Модуль `browser_stealth.crypto`
+
+Портативное шифрование строк детерминированным ключом. Подробнее — [Портативное шифрование](crypto.md).
+
+| Имя | Описание |
+|---|---|
+| `encrypt_portable` | Шифрует строку ключом, выведенным из seed |
+| `decrypt_portable` | Расшифровывает токен; при ошибке `None` или исключение |
+
+---
+
+## 10. Модуль `browser_stealth.testing`
+
+Моки, фикстуры и запись сценариев. Подробнее — [Автотестирование и моки](testing.md).
+
+| Имя | Описание |
+|---|---|
+| `LocalTestServer` | Локальный HTTP-сервер для тестовых страниц |
+| `MockNodriverTab`, `MockPlaywrightPage`, `MockSeleniumDriver` | Моки браузерных объектов |
+| `SnapshotRecorder` | Сохранение и загрузка HTML-снапшотов |
+| `use_html_snapshot` | Контекстный менеджер/декоратор подмены страницы снапшотом |
+| `DOMActionRecorder`, `DOMActionRecorderHUD` | Запись действий пользователя и HUD-чек-лист |
+| `LiveBrowserSession` | Изолированная сессия реального браузера с гарантированной очисткой |
+| `assert_extraction_complete`, `assert_schema_match`, `assert_valid_url`, `assert_valid_price` | Проверки полноты и формата извлечённых данных |

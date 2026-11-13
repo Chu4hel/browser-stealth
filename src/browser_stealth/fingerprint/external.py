@@ -1,10 +1,11 @@
-"""Адаптеры для внешних генераторов отпечатков (browserforge, fpgen)."""
+"""Адаптер внешнего генератора отпечатков browserforge (Apify)."""
 
 from __future__ import annotations
 
 import hashlib
 import importlib.util
 import random
+from typing import Any
 
 from browser_stealth.exceptions import OptionalDependencyError
 
@@ -16,10 +17,12 @@ from .models import (
     WebGLFingerprint,
 )
 
+FingerprintGenerator: Any = None
 try:
-    from browserforge.fingerprints import FingerprintGenerator
-except ImportError:
-    FingerprintGenerator = None  # type: ignore[assignment,misc]
+    _browserforge_module = importlib.import_module("browserforge.fingerprints")
+    FingerprintGenerator = getattr(_browserforge_module, "FingerprintGenerator")
+except (ImportError, AttributeError, ValueError):
+    FingerprintGenerator = None
 
 
 def _ensure_browserforge() -> None:
@@ -30,23 +33,9 @@ def _ensure_browserforge() -> None:
     except (ImportError, ValueError):
         raise OptionalDependencyError(
             "Модуль 'browserforge' не установлен. Для использования байесовской генерации "
-            "установите его: pip install browserforge или pip install chutils[fingerprint].",
+            'установите extra: pip install "browser-stealth[fingerprint]".',
             dependency="browserforge",
             hint="Выполните pip install browserforge",
-        )
-
-
-def _ensure_fpgen() -> None:
-    """Проверяет доступность библиотеки fpgen."""
-    try:
-        if importlib.util.find_spec("fpgen") is None:
-            raise ImportError()
-    except (ImportError, ValueError):
-        raise OptionalDependencyError(
-            "Модуль 'fpgen' не установлен. Для использования fpgen "
-            "установите его: pip install fpgen.",
-            dependency="fpgen",
-            hint="Выполните pip install fpgen",
         )
 
 

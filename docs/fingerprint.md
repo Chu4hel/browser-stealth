@@ -43,11 +43,21 @@ await apply_antidetect_playwright(page, config)
 
 ## 3. Интеграция с BrowserForge (ML-моделирование)
 
-При установке опционального пакета `pip install "browser-stealth[fingerprint]"` библиотека может использовать байесовскую модель распределения реальных отпечатков:
+С extra `fingerprint` библиотека может использовать байесовскую модель распределения реальных отпечатков:
+
+```bash
+uv add "browser-stealth[fingerprint]"
+# или
+pip install "browser-stealth[fingerprint]"
+```
 
 ```python
 from browser_stealth.fingerprint.external import BrowserForgeProvider
 
-provider = BrowserForgeProvider()
-profile = provider.get_fingerprint(browser="chrome", os="windows")
+provider = BrowserForgeProvider(browser="chrome", os="windows")
+profile = provider.generate(seed="stable_seed_123")
+
+print(profile.user_agent)
 ```
+
+Метод `generate()` принимает опциональный `seed` и возвращает `FingerprintProfile` — тот же формат, что у `FingerprintSynthesizer`, поэтому профиль сразу подходит для `to_antidetect_config()`.

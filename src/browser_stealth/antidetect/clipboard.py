@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import inspect
-import logging
+import json
 from typing import Any
 
-logger = logging.getLogger("browser_stealth.antidetect.clipboard")
+from browser_stealth.logging import get_logger
+
+logger = get_logger(__name__)
 
 INSTALL_CLIPBOARD_HOOK_JS = """
 (() => {
@@ -208,6 +210,28 @@ GET_COPIED_CLIPBOARD_JS = """
 })()
 """
 
+SET_COPIED_CLIPBOARD_JS = """
+((text) => {
+    try {
+        if (typeof window !== 'undefined') {
+            window.__lastCopiedText = text;
+            try {
+                if (window.top && window.top !== window) {
+                    window.top.__lastCopiedText = text;
+                }
+            } catch (e) {}
+            try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.__lastCopiedText = text;
+                }
+            } catch (e) {}
+            return true;
+        }
+    } catch (e) {}
+    return false;
+})
+"""
+
 
 async def apply_clipboard_isolation(page_or_tab: Any) -> bool:
     """Применяет изолированный буфер обмена к странице/вкладке (Playwright, nodriver, Selenium).
@@ -310,9 +334,40 @@ async def get_isolated_clipboard_text(page_or_tab: Any) -> str | None:
     return None
 
 
+async def set_isolated_clipboard_text(page_or_tab: Any, text: str) -> bool:
+    """Устанавливает текст в изолированный виртуальный буфер обмена страницы/вкладки.
+
+    Args:
+        page_or_tab: Объект страницы Playwright, вкладки nodriver или драйвера Selenium.
+        text: Текст для сохранения в изолированном буфере.
+
+    Returns:
+        True, если текст успешно установлен, иначе False.
+    """
+    if page_or_tab is None:
+        return False
+
+    script = f"({SET_COPIED_CLIPBOARD_JS})({json.dumps(text)})"
+    try:
+        if hasattr(page_or_tab, "evaluate") and callable(page_or_tab.evaluate):
+            res = page_or_tab.evaluate(script)
+            if inspect.isawaitable(res):
+                res = await res
+            return bool(res)
+        if hasattr(page_or_tab, "execute_script") and callable(page_or_tab.execute_script):
+            res = page_or_tab.execute_script(script)
+            return bool(res)
+    except Exception as exc:
+        logger.debug("Не удалось установить текст в изолированный буфер: %s", exc)
+
+    return False
+
+
 __all__ = [
     "GET_COPIED_CLIPBOARD_JS",
     "INSTALL_CLIPBOARD_HOOK_JS",
+    "SET_COPIED_CLIPBOARD_JS",
     "apply_clipboard_isolation",
     "get_isolated_clipboard_text",
+    "set_isolated_clipboard_text",
 ]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +16,9 @@ class ProxyConfig(BaseModel):
     port: int = Field(ge=1, le=65535)
     username: str | None = None
     password: str | None = None
+    country: str | None = None
+    timezone: str | None = None
+    locale: str | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 
     @property
@@ -58,7 +61,11 @@ class ProxyConfig(BaseModel):
         return f"Basic {base64.b64encode(creds).decode('utf-8')}"
 
     def to_playwright(self) -> dict[str, str]:
-        """Преобразует конфигурацию в словарь параметров прокси для Playwright."""
+        """Преобразует конфигурацию в словарь параметров прокси для Playwright.
+
+        Returns:
+            Словарь с ключами server и, при наличии, username/password.
+        """
         cfg: dict[str, str] = {"server": self.server_url}
         if self.username is not None:
             cfg["username"] = self.username
@@ -67,11 +74,19 @@ class ProxyConfig(BaseModel):
         return cfg
 
     def to_chrome_arg(self) -> str:
-        """Возвращает CLI аргумент --proxy-server для Chromium."""
+        """Возвращает CLI аргумент --proxy-server для Chromium.
+
+        Returns:
+            Строка вида '--proxy-server=host:port'.
+        """
         return f"--proxy-server={self.server_url}"
 
     def to_selenium(self) -> dict[str, str]:
-        """Преобразует конфигурацию в словарь capabilities прокси для Selenium."""
+        """Преобразует конфигурацию в словарь capabilities прокси для Selenium.
+
+        Returns:
+            Словарь с proxyType=MANUAL и host:port для http/ssl прокси.
+        """
         host_port = f"{self.host}:{self.port}"
         return {
             "proxyType": "MANUAL",
@@ -80,7 +95,14 @@ class ProxyConfig(BaseModel):
         }
 
     def to_string(self, format: str = "url") -> str:
-        """Форматирует прокси в строковое представление по заданному шаблону."""
+        """Форматирует прокси в строковое представление по заданному шаблону.
+
+        Args:
+            format: Шаблон вывода: 'url', 'host:port', 'host:port:user:pass' или 'server'.
+
+        Returns:
+            Строковое представление прокси в выбранном формате.
+        """
         match format:
             case "url":
                 return self.url
@@ -94,6 +116,21 @@ class ProxyConfig(BaseModel):
                 return self.server_url
             case _:
                 return self.url
+
+    def to_antidetect_config(self, base_config: Any = None) -> Any:
+        """Синхронизирует прокси с AntidetectConfig, выравнивая таймзону и локаль.
+
+        Args:
+            base_config: Исходная конфигурация AntidetectConfig; если None, создается новая.
+
+        Returns:
+            Копия AntidetectConfig с таймзоной и локалью, согласованными с прокси.
+        """
+        from browser_stealth.antidetect.config import AntidetectConfig
+        from browser_stealth.proxy.geo import align_proxy_with_antidetect
+
+        cfg = base_config.model_copy() if base_config else AntidetectConfig()
+        return align_proxy_with_antidetect(self, cfg)
 
 
 class ProxyHealthResult(BaseModel):

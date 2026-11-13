@@ -133,6 +133,67 @@ async def test_launch_nodriver_sanitizes_profile() -> None:
         mock_sanitize.assert_called_once_with("/tmp/chrome_profile")
 
 
+@pytest.mark.asyncio
+async def test_launch_nodriver_waits_for_slow_cdp() -> None:
+    """Проверка подключения к Chromium, не успевшему открыть порт CDP за таймаут nodriver."""
+    from types import SimpleNamespace
+
+    mock_uc = MagicMock()
+    mock_browser = MagicMock()
+    mock_browser.info = None
+    mock_browser.main_tab = MagicMock()
+    mock_browser._process = MagicMock(returncode=None)
+    mock_browser._http.get = AsyncMock(
+        return_value={"webSocketDebuggerUrl": "ws://127.0.0.1/devtools"}
+    )
+    mock_browser.attach = AsyncMock()
+    mock_browser.update_targets = AsyncMock()
+    mock_uc.ContraDict = lambda value, silent=True: SimpleNamespace(
+        webSocketDebuggerUrl=value["webSocketDebuggerUrl"]
+    )
+    # До запуска экземпляров нет, после неудачной попытки появляется один незавершенный.
+    mock_uc.util.get_registered_instances.side_effect = [set(), {mock_browser}]
+    mock_uc.start = AsyncMock(side_effect=Exception("Failed to connect to browser"))
+
+    with (
+        patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
+        patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
+    ):
+        browser = await launch_nodriver(headless=True)
+
+    assert browser is mock_browser
+    assert mock_browser.attach.called
+    assert mock_browser.update_targets.called
+    assert mock_browser.info is not None
+
+
+@pytest.mark.asyncio
+async def test_launch_nodriver_reports_chrome_stderr_on_crash() -> None:
+    """Проверка попадания stderr Chromium в ошибку, если процесс упал при старте."""
+    mock_uc = MagicMock()
+    mock_browser = MagicMock()
+    mock_browser.info = None
+    mock_browser.main_tab = MagicMock()
+    mock_browser._process = MagicMock(returncode=1)
+    mock_browser._process.stderr.read = AsyncMock(
+        return_value=b"[FATAL:zygote_host_impl_linux.cc] Running as root without --no-sandbox"
+    )
+    mock_uc.util.get_registered_instances.side_effect = [set(), {mock_browser}]
+    mock_uc.start = AsyncMock(side_effect=Exception("Failed to connect to browser"))
+
+    with (
+        patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
+        patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
+    ):
+        with pytest.raises(RuntimeError) as exc_info:
+            await launch_nodriver(headless=True)
+
+    message = str(exc_info.value)
+    assert "кодом 1" in message
+    assert "Running as root without --no-sandbox" in message
+    assert not mock_browser.attach.called
+
+
 def test_scraping_module_exports() -> None:
     """Проверка ленивого экспорта launch_nodriver и nodriver_session из browser_stealth."""
     import browser_stealth

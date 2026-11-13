@@ -1,8 +1,8 @@
 """Безопасное хранилище учетных данных прокси на базе системного Keyring."""
 
-import logging  # chutils: ignore[ChutilsIntegrationRule]
 from typing import Any, ClassVar
 
+from browser_stealth.logging import get_logger as setup_logger
 from browser_stealth.proxy.parser import parse_proxy
 
 try:
@@ -10,39 +10,44 @@ try:
 except ImportError:
 
     class SecretManager:  # type: ignore[no-redef]
-        """Легковесный fallback для SecretManager через keyring."""
+        """Легковесный in-memory fallback для SecretManager без внешних зависимостей."""
 
         def __init__(
             self, service_name: str = "browser_stealth_proxy", auto_mask_logs: bool = True
         ) -> None:
             self.service_name = service_name
+            self._values: dict[str, str] = {}
 
         def get_secret(self, key: str) -> str | None:
-            try:
-                import keyring
+            """Возвращает секрет из внутрипроцессного хранилища.
 
-                return keyring.get_password(self.service_name, key)
-            except Exception:
-                return None
+            Args:
+                key: Ключ секрета в хранилище.
+
+            Returns:
+                Значение секрета или None, если оно не найдено.
+            """
+            return self._values.get(key)
 
         def save_secret(self, key: str, value: str) -> None:
-            try:
-                import keyring
+            """Сохраняет секрет во внутрипроцессное хранилище.
 
-                keyring.set_password(self.service_name, key, value)
-            except Exception:
-                pass
+            Args:
+                key: Ключ секрета в хранилище.
+                value: Сохраняемое значение секрета.
+            """
+            self._values[key] = value
 
         def delete_secret(self, key: str) -> None:
-            try:
-                import keyring
+            """Удаляет секрет из внутрипроцессного хранилища.
 
-                keyring.delete_password(self.service_name, key)
-            except Exception:
-                pass
+            Args:
+                key: Ключ секрета в хранилище.
+            """
+            self._values.pop(key, None)
 
 
-logger = logging.getLogger("browser_stealth.proxy.storage")
+logger = setup_logger(__name__)
 
 
 class KeyringProxyStorage:
@@ -104,7 +109,7 @@ class KeyringProxyStorage:
         key = self._make_key(profile_name)
         try:
             val = self._secrets.get_secret(key)
-            if val is not None and val.strip():
+            if isinstance(val, str) and val.strip():
                 return val.strip()
         except Exception as exc:
             logger.debug("Ошибка получения прокси из Keyring для ключа '%s': %s", key, exc)

@@ -1,4 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from browser_stealth.humanize.search import unwrap_redirect_url

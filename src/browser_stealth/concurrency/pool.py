@@ -7,9 +7,13 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures.thread  # noqa: F401
 import inspect
+import random
 import time
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
+
+from browser_stealth.concurrency.reaper import IdleBrowserReaper
+from browser_stealth.logging import get_logger as setup_logger
 
 if TYPE_CHECKING:
     from .base import BaseTaskQueue
@@ -70,7 +74,7 @@ class WorkerPool:
         while self._running:
             task = await self.queue.pop()
             if task is None:
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(random.uniform(0.04, 0.09))
                 continue
 
             async with self._lock:
@@ -142,10 +146,6 @@ class WorkerPool:
             await self.stop()
 
 
-from typing import Generic, TypeVar
-from browser_stealth.concurrency.reaper import IdleBrowserReaper
-from browser_stealth.logging import get_logger as setup_logger
-
 logger = setup_logger(__name__)
 
 TKey = TypeVar("TKey")
@@ -194,7 +194,7 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
         self._pool_lock = asyncio.Lock()
 
         self._idle_reaper = IdleBrowserReaper(
-            close_worker_fn=self.close_worker,
+            close_worker_fn=self._close_worker_silently,
             is_worker_busy_fn=self.is_worker_busy,
             get_active_workers_fn=lambda: list(self._workers.keys()),
             get_last_used_fn=lambda k: self._worker_last_used.get(k, time.time()),
@@ -228,18 +228,36 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
         self._max_parallel_workers = max(1, value)
 
     def get_worker_lock(self, key: TKey) -> asyncio.Lock:
-        """Возвращает индивидуальный лок для воркера, создавая его при необходимости."""
+        """Возвращает индивидуальный лок для воркера, создавая его при необходимости.
+
+        Args:
+            key: Идентификатор воркера.
+
+        Returns:
+            Экземпляр asyncio.Lock, привязанный к указанному воркеру.
+        """
         if key not in self._worker_locks:
             self._worker_locks[key] = asyncio.Lock()
         return self._worker_locks[key]
 
     def is_worker_busy(self, key: TKey) -> bool:
-        """Проверяет, выполняет ли воркер задачу в данный момент."""
+        """Проверяет, выполняет ли воркер задачу в данный момент.
+
+        Args:
+            key: Идентификатор воркера.
+
+        Returns:
+            True, если лок воркера захвачен, иначе False.
+        """
         lock = self._worker_locks.get(key)
         return lock.locked() if lock is not None else False
 
     def touch_worker(self, key: TKey) -> None:
-        """Обновляет метку времени активности воркера."""
+        """Обновляет метку времени активности воркера.
+
+        Args:
+            key: Идентификатор воркера.
+        """
         self._worker_last_used[key] = time.time()
 
     async def get_or_create_worker(self, key: TKey) -> TWorker:
@@ -260,7 +278,9 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
             if len(self._workers) >= self._max_parallel_workers:
                 evicted = await self.evict_lru_worker(exclude_key=key)
                 if evicted:
-                    logger.info("LRU-вытеснен неактивный воркер %s для освобождения ресурсов", evicted)
+                    logger.info(
+                        "LRU-вытеснен неактивный воркер %s для освобождения ресурсов", evicted
+                    )
 
             logger.info("Запуск воркера %s в пуле процессов...", key)
             worker = await self._worker_factory(key)
@@ -273,7 +293,14 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
             return worker
 
     async def evict_lru_worker(self, exclude_key: TKey | None = None) -> TKey | None:
-        """Вытесняет и закрывает наименее недавно использованный свободный воркер."""
+        """Вытесняет и закрывает наименее недавно использованный свободный воркер.
+
+        Args:
+            exclude_key: Ключ воркера, который нельзя вытеснять (например, только что запрошенный).
+
+        Returns:
+            Ключ вытесненного воркера или None, если свободных воркеров не нашлось.
+        """
         candidates: list[tuple[TKey, float]] = []
         for k, last_used in self._worker_last_used.items():
             if k == exclude_key or k not in self._workers:
@@ -321,6 +348,14 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
         async with self._pool_lock:
             return await self._close_worker_internal(key)
 
+    async def _close_worker_silently(self, key: TKey) -> None:
+        """Закрывает воркер для reaper'а простоя, отбрасывая результат.
+
+        Args:
+            key: Идентификатор воркера.
+        """
+        await self.close_worker(key)
+
     async def close_all(self) -> None:
         """Останавливает мониторинг простоя и закрывает все активные воркеры."""
         await self.stop_reaper()
@@ -338,7 +373,11 @@ class BrowserProcessPool(Generic[TKey, TWorker]):
         await self._idle_reaper.stop()
 
     async def reap_idle_workers(self) -> int:
-        """Ручной триггер закрытия простаивающих воркеров."""
+        """Ручной триггер закрытия простаивающих воркеров.
+
+        Returns:
+            Количество закрытых простаивающих воркеров.
+        """
         return await self._idle_reaper.reap()
 
 

@@ -73,6 +73,18 @@ class AntidetectConfig(BaseModel):
         default=None,
         description="Эмулируемая доступная высота экрана за вычетом панели задач (screen.availHeight).",
     )
+    screen_avail_width: int | None = Field(
+        default=None,
+        description="Эмулируемая доступная ширина экрана (screen.availWidth).",
+    )
+    screen_avail_top: int | None = Field(
+        default=None,
+        description="Эмулируемый отступ сверху для панели задач/меню (screen.availTop).",
+    )
+    screen_avail_left: int | None = Field(
+        default=None,
+        description="Эмулируемый отступ слева (screen.availLeft).",
+    )
     device_pixel_ratio: float | None = Field(
         default=None,
         description="Эмулируемый коэффициент масштабирования (window.devicePixelRatio).",
@@ -102,6 +114,14 @@ class AntidetectConfig(BaseModel):
     orientation: dict[str, Any] | None = Field(
         default=None,
         description="Параметры ориентации экрана (type, angle).",
+    )
+    locale: str = Field(
+        default="en-US",
+        description="Локаль браузера (например, 'en-US', 'ru-RU').",
+    )
+    timezone: str | None = Field(
+        default=None,
+        description="Целевой часовой пояс IANA (например, 'America/New_York', 'Europe/Berlin').",
     )
 
     @classmethod
@@ -455,6 +475,9 @@ class AntidetectConfig(BaseModel):
             screen_width=self.screen_width,
             screen_height=self.screen_height,
             screen_avail_height=self.screen_avail_height,
+            screen_avail_width=self.screen_avail_width,
+            screen_avail_top=self.screen_avail_top,
+            screen_avail_left=self.screen_avail_left,
             device_pixel_ratio=self.device_pixel_ratio,
             media_devices=self.media_devices,
             is_mobile=self.is_mobile,
@@ -462,6 +485,9 @@ class AntidetectConfig(BaseModel):
             max_touch_points=self.max_touch_points,
             is_ios=self.is_ios,
             orientation=self.orientation,
+            locale=self.locale,
+            user_agent=self.user_agent,
+            timezone=self.timezone,
         )
 
     async def apply_to_nodriver(self, tab: Any) -> None:

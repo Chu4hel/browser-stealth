@@ -1,5 +1,6 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from browser_stealth.concurrency.pool import BrowserProcessPool

@@ -3,15 +3,75 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.util
 import json
 import random
-import sys
 import time
 from collections.abc import Coroutine
 from typing import Any
 
-from browser_stealth.exceptions import OptionalDependencyError
+from browser_stealth.logging import get_logger as setup_logger
+
+from ._deps import (
+    _ensure_nodriver,
+    _ensure_playwright,
+    _ensure_selenium,
+    _is_nodriver,
+    _is_playwright,
+)
+from ._typing_engine import (
+    JS_DOM_HEAL_SCRIPT,
+    JS_DOM_PASTE_SCRIPT,
+    _async_type_nodriver,
+    _async_type_playwright,
+)
+
+# Реэкспорт проверок зависимостей, JS-скриптов и движка ввода для обратной совместимости.
+
+__all__ = [
+    "JS_DOM_HEAL_SCRIPT",
+    "JS_DOM_PASTE_SCRIPT",
+    "_async_type_nodriver",
+    "_async_type_playwright",
+    "_build_selenium_key_map",
+    "_ensure_nodriver",
+    "_ensure_playwright",
+    "_ensure_selenium",
+    "_generate_scroll_points",
+    "_is_connection_closed",
+    "_is_nodriver",
+    "_is_playwright",
+    "_resolve_async_element_coordinates",
+    "_run_with_timeout",
+    "_safe_get_async_url",
+    "async_human_sleep",
+    "click",
+    "human_sleep",
+]
+
+logger = setup_logger(__name__)
+
+try:  # websockets доступен как транзитивная зависимость nodriver
+    from websockets.exceptions import ConnectionClosed as _WebsocketsConnectionClosed
+except (ImportError, AttributeError):  # pragma: no cover - websockets не установлен
+    _WebsocketsConnectionClosed = None  # type: ignore[assignment,misc]
+
+
+def _is_connection_closed(exc: BaseException) -> bool:
+    """Определяет, вызвано ли исключение закрытием WebSocket-соединения с браузером.
+
+    Args:
+        exc: Перехваченное исключение.
+
+    Returns:
+        True, если браузер закрыт или соединение с CDP оборвано.
+    """
+    if _WebsocketsConnectionClosed is not None and isinstance(exc, _WebsocketsConnectionClosed):
+        return True
+    return type(exc).__name__ in {
+        "ConnectionClosed",
+        "ConnectionClosedError",
+        "ConnectionClosedOK",
+    }
 
 
 async def _run_with_timeout(
@@ -25,99 +85,22 @@ async def _run_with_timeout(
         timeout: Таймаут в секундах. Если None, выполняется без таймаута.
 
     Returns:
-        Результат выполнения корутины.
+        Результат выполнения корутины или None, если браузер был закрыт.
 
     Raises:
         TimeoutError: При превышении допустимого таймаута.
     """
-    if timeout is not None:
-        try:
+    try:
+        if timeout is not None:
             return await asyncio.wait_for(coro, timeout=timeout)
-        except TimeoutError as exc:
-            raise TimeoutError(f"Действие превысило допустимый таймаут {timeout}с") from exc
-    return await coro
-
-
-def _ensure_playwright() -> None:
-    """Проверяет доступность библиотеки playwright."""
-    if "playwright" in sys.modules:
-        return
-    try:
-        if importlib.util.find_spec("playwright") is None:
-            raise ImportError()
-    except (ImportError, ValueError):
-        raise OptionalDependencyError(
-            "Модуль 'playwright' не установлен. Для использования Playwright-интеграций "
-            "установите его: pip install chutils[scraping] или pip install playwright.",
-            dependency="playwright",
-            hint="Выполните pip install chutils[scraping] или pip install playwright.",
-        )
-
-
-def _ensure_selenium() -> None:
-    """Проверяет доступность библиотеки selenium."""
-    if "selenium" in sys.modules:
-        return
-    try:
-        if importlib.util.find_spec("selenium") is None:
-            raise ImportError()
-    except (ImportError, ValueError):
-        raise OptionalDependencyError(
-            "Модуль 'selenium' не установлен. Для использования Selenium-интеграций "
-            "установите его: pip install chutils[scraping] или pip install selenium.",
-            dependency="selenium",
-            hint="Выполните pip install chutils[scraping] или pip install selenium.",
-        )
-
-
-def _ensure_nodriver() -> None:
-    """Проверяет доступность библиотеки nodriver."""
-    if "nodriver" in sys.modules:
-        try:
-            from unittest.mock import Mock
-
-            is_mock = isinstance(sys.modules["nodriver"], Mock)
-        except ImportError:
-            is_mock = False
-        if not is_mock:
-            return
-    try:
-        if importlib.util.find_spec("nodriver") is None:
-            raise ImportError()
-    except (ImportError, ValueError):
-        raise OptionalDependencyError(
-            "Модуль 'nodriver' не установлен. Для использования nodriver-интеграций "
-            "установите его в ваше окружение (например, pip install nodriver или uv add nodriver).",
-            dependency="nodriver",
-            hint="Установите пакет nodriver в ваше окружение (через pip, uv или poetry).",
-        )
-
-
-def _is_nodriver(obj: Any) -> bool:
-    """Определяет, является ли переданный объект элементом или вкладкой nodriver."""
-    try:
-        from unittest.mock import Mock
-
-        is_mock = isinstance(obj, Mock)
-    except ImportError:
-        is_mock = False
-
-    if is_mock:
-        return getattr(obj, "_is_nodriver", False) is True
-
-    return hasattr(obj, "send") and callable(obj.send)
-
-
-def _is_playwright(obj: Any) -> bool:
-    """Определяет, является ли переданный объект страницей Playwright."""
-    if obj is None:
-        return True
-    return not _is_nodriver(obj) and (
-        hasattr(obj, "mouse")
-        or hasattr(obj, "keyboard")
-        or hasattr(obj, "evaluate")
-        or hasattr(obj, "focus")
-    )
+        return await coro
+    except TimeoutError as exc:
+        raise TimeoutError(f"Действие превысило допустимый таймаут {timeout}с") from exc
+    except Exception as exc:
+        if _is_connection_closed(exc):
+            logger.debug("Соединение с браузером закрыто, действие прервано штатно: %s", exc)
+            return None
+        raise
 
 
 async def _safe_get_async_url(page_or_tab: Any) -> str:
@@ -321,261 +304,6 @@ async def _resolve_async_element_coordinates(page: Any, selector: str) -> tuple[
         )
 
 
-JS_DOM_PASTE_SCRIPT = (
-    "(function(sel, val) {"
-    "  var el = document.querySelector(sel);"
-    "  if (!el) return false;"
-    "  var proto = Object.getPrototypeOf(el);"
-    "  var desc = Object.getOwnPropertyDescriptor(proto, 'value') || "
-    "             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value') || "
-    "             Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');"
-    "  if (desc && desc.set) {"
-    "    desc.set.call(el, val);"
-    "  } else if ('value' in el) {"
-    "    el.value = val;"
-    "  } else {"
-    "    el.textContent = val;"
-    "  }"
-    "  el.dispatchEvent(new Event('input', { bubbles: true }));"
-    "  el.dispatchEvent(new Event('change', { bubbles: true }));"
-    "  return true;"
-    "})"
-)
-
-
-JS_DOM_HEAL_SCRIPT = (
-    "(function(sel, expected) {"
-    "  var el = document.querySelector(sel);"
-    "  if (!el) return;"
-    "  var current = el.value !== undefined ? el.value : el.textContent;"
-    "  if (current !== expected) {"
-    "    var proto = Object.getPrototypeOf(el);"
-    "    var desc = Object.getOwnPropertyDescriptor(proto, 'value') || "
-    "               Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value') || "
-    "               Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');"
-    "    if (desc && desc.set) {"
-    "      desc.set.call(el, expected);"
-    "    } else if ('value' in el) {"
-    "      el.value = expected;"
-    "    } else {"
-    "      el.textContent = expected;"
-    "    }"
-    "    el.dispatchEvent(new Event('input', { bubbles: true }));"
-    "    el.dispatchEvent(new Event('change', { bubbles: true }));"
-    "  }"
-    "})"
-)
-
-
-async def _dom_safe_paste(page: Any, selector: str, text: str) -> bool:
-    """Безопасно вставляет текст через DOM Prototype Setter с диспатчем input/change.
-
-    Args:
-        page: Объект страницы Playwright или вкладки nodriver.
-        selector: CSS-селектор целевого элемента.
-        text: Вставляемый текст.
-
-    Returns:
-        True, если вставка через JS выполнена успешно, иначе False.
-    """
-    if hasattr(page, "evaluate") and callable(page.evaluate):
-        try:
-            res = await page.evaluate(
-                f"({JS_DOM_PASTE_SCRIPT})({json.dumps(selector)}, {json.dumps(text)})"
-            )
-            return res is True
-        except Exception:
-            return False
-    return False
-
-
-async def _dom_safe_heal(page: Any, selector: str, expected_text: str) -> None:
-    """Выполняет сверку и самовосстановление значения поля ввода через DOM.
-
-    Args:
-        page: Объект страницы Playwright или вкладки nodriver.
-        selector: CSS-селектор целевого элемента.
-        expected_text: Ожидаемый итоговый текст.
-    """
-    if hasattr(page, "evaluate") and callable(page.evaluate):
-        try:
-            await page.evaluate(
-                f"({JS_DOM_HEAL_SCRIPT})({json.dumps(selector)}, {json.dumps(expected_text)})"
-            )
-        except Exception:
-            pass
-
-
-async def _async_type_nodriver(
-    page: Any,
-    selector: str,
-    text: str,
-    *,
-    error_rate: float,
-    speed_wpm: float,
-    key_hold_time: tuple[float, float],
-    layout_error_rate: float,
-    delayed_fix_rate: float,
-    paste_threshold: int | None,
-    paste_delay_before: tuple[float, float],
-    paste_delay_after: tuple[float, float],
-    delay_gen: Any,
-    typo_gen: Any,
-) -> None:
-    """Выполняет посимвольный ввод или paste для nodriver."""
-    _ensure_nodriver()
-    from nodriver.cdp import input_ as cdp_input
-
-    element = await page.find(selector)
-    await element.focus()
-
-    if paste_threshold is not None and len(text) >= paste_threshold:
-        if paste_delay_before and paste_delay_before[1] > 0:
-            await asyncio.sleep(random.uniform(*paste_delay_before))
-
-        pasted = await _dom_safe_paste(page, selector, text)
-        if not pasted:
-            await page.send(cdp_input.insert_text(text=text))
-
-        if paste_delay_after and paste_delay_after[1] > 0:
-            await asyncio.sleep(random.uniform(*paste_delay_after))
-        return
-
-    char_delay = 60.0 / (speed_wpm * 5)
-    sequence = typo_gen.generate_sequence(
-        text,
-        error_rate=error_rate,
-        layout_error_rate=layout_error_rate,
-        delayed_fix_rate=delayed_fix_rate,
-    )
-
-    for action in sequence:
-        if action.action == "type":
-            c = action.char
-            await page.send(
-                cdp_input.dispatch_key_event(type_="keyDown", text=c, unmodified_text=c, key=c)
-            )
-            if key_hold_time and key_hold_time[1] > 0:
-                await asyncio.sleep(random.uniform(*key_hold_time))
-            await page.send(
-                cdp_input.dispatch_key_event(type_="keyUp", text=c, unmodified_text=c, key=c)
-            )
-        elif action.action == "backspace":
-            await page.send(
-                cdp_input.dispatch_key_event(
-                    type_="rawKeyDown",
-                    key="Backspace",
-                    code="Backspace",
-                    windows_virtual_key_code=8,
-                    native_virtual_key_code=8,
-                    commands=["deleteContentBackward"],
-                )
-            )
-            if key_hold_time and key_hold_time[1] > 0:
-                await asyncio.sleep(random.uniform(*key_hold_time))
-            await page.send(
-                cdp_input.dispatch_key_event(
-                    type_="keyUp",
-                    key="Backspace",
-                    code="Backspace",
-                    windows_virtual_key_code=8,
-                    native_virtual_key_code=8,
-                )
-            )
-        elif action.action == "key":
-            k = action.char
-            vk = {
-                "ArrowLeft": 37,
-                "ArrowUp": 38,
-                "ArrowRight": 39,
-                "ArrowDown": 40,
-                "Backspace": 8,
-                "Enter": 13,
-            }.get(k, 0)
-            extra: dict[str, Any] = (
-                {"commands": ["deleteContentBackward"]} if k == "Backspace" else {}
-            )
-            await page.send(
-                cdp_input.dispatch_key_event(
-                    type_="rawKeyDown",
-                    key=k,
-                    code=k,
-                    windows_virtual_key_code=vk,
-                    native_virtual_key_code=vk,
-                    **extra,
-                )
-            )
-            if key_hold_time and key_hold_time[1] > 0:
-                await asyncio.sleep(random.uniform(*key_hold_time))
-            await page.send(
-                cdp_input.dispatch_key_event(
-                    type_="keyUp",
-                    key=k,
-                    code=k,
-                    windows_virtual_key_code=vk,
-                    native_virtual_key_code=vk,
-                )
-            )
-
-        delay = delay_gen.generate(char_delay)
-        if delay > 0:
-            await asyncio.sleep(delay)
-
-    await _dom_safe_heal(page, selector, text)
-
-
-async def _async_type_playwright(
-    page: Any,
-    selector: str,
-    text: str,
-    *,
-    error_rate: float,
-    speed_wpm: float,
-    layout_error_rate: float,
-    delayed_fix_rate: float,
-    paste_threshold: int | None,
-    paste_delay_before: tuple[float, float],
-    paste_delay_after: tuple[float, float],
-    delay_gen: Any,
-    typo_gen: Any,
-) -> None:
-    """Выполняет посимвольный ввод или paste для Playwright."""
-    _ensure_playwright()
-    await page.focus(selector)
-
-    if paste_threshold is not None and len(text) >= paste_threshold:
-        if paste_delay_before and paste_delay_before[1] > 0:
-            await asyncio.sleep(random.uniform(*paste_delay_before))
-
-        await page.keyboard.insert_text(text)
-
-        if paste_delay_after and paste_delay_after[1] > 0:
-            await asyncio.sleep(random.uniform(*paste_delay_after))
-        return
-
-    char_delay = 60.0 / (speed_wpm * 5)
-    sequence = typo_gen.generate_sequence(
-        text,
-        error_rate=error_rate,
-        layout_error_rate=layout_error_rate,
-        delayed_fix_rate=delayed_fix_rate,
-    )
-
-    for action in sequence:
-        if action.action == "type":
-            await page.keyboard.type(action.char)
-        elif action.action == "backspace":
-            await page.keyboard.press("Backspace")
-        elif action.action == "key":
-            await page.keyboard.press(action.char)
-
-        delay = delay_gen.generate(char_delay)
-        if delay > 0:
-            await asyncio.sleep(delay)
-
-    await _dom_safe_heal(page, selector, text)
-
-
 def click(
     driver: Any,
     selector: str | None = None,
@@ -583,7 +311,7 @@ def click(
     y: int | None = None,
     start: tuple[int, int] | None = None,
     algorithm: str = "windmouse",
-    hold_time: tuple[float, float] = (0.05, 0.12),
+    hold_time: tuple[float, float] = (0.06, 0.12),
 ) -> None:
     """Имитирует реалистичный клик мышью Selenium.
 
@@ -618,7 +346,7 @@ def click(
     time.sleep(random.uniform(0.04, 0.12))
 
     hold_delay = (
-        random.uniform(*hold_time) if hold_time and hold_time[1] > 0 else random.uniform(0.04, 0.09)
+        random.uniform(*hold_time) if hold_time and hold_time[1] > 0 else random.uniform(0.06, 0.12)
     )
     actions = ActionChains(driver)
     actions.click_and_hold().pause(hold_delay).release().perform()

@@ -9,15 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import logging
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from browser_stealth.launchers.nodriver import close_tab as _default_close_tab
+from browser_stealth.logging import get_logger as setup_logger
 
-logger = logging.getLogger("browser_stealth.concurrency.tabs")
+logger = setup_logger(__name__)
 
 
 @dataclass
@@ -60,11 +60,22 @@ class SessionTabPool:
         return len(self._sessions)
 
     def get_session(self, session_id: str) -> TabSession | None:
-        """Возвращает метаданные сессии по ID без изменения счетчиков."""
+        """Возвращает метаданные сессии по ID без изменения счетчиков.
+
+        Args:
+            session_id: Идентификатор сессии.
+
+        Returns:
+            Метаданные сессии TabSession или None, если сессия не зарегистрирована.
+        """
         return self._sessions.get(session_id)
 
     def list_session_ids(self) -> list[str]:
-        """Возвращает список идентификаторов всех зарегистрированных сессий."""
+        """Возвращает список идентификаторов всех зарегистрированных сессий.
+
+        Returns:
+            Список строковых идентификаторов сессий.
+        """
         return list(self._sessions.keys())
 
     async def is_tab_alive(self, tab: Any) -> bool:
@@ -83,7 +94,7 @@ class SessionTabPool:
                 res = tab.evaluate("1 + 1")
                 if inspect.isawaitable(res):
                     res = await res
-                return res == 2
+                return bool(res == 2)
             return True
         except Exception:
             return False
@@ -169,7 +180,9 @@ class SessionTabPool:
                 len(self._sessions) >= self.max_tabs
                 or (isinstance(browser_tabs, list) and len(browser_tabs) >= self.max_tabs)
             ):
-                oldest_key = min(self._sessions.keys(), key=lambda k: self._sessions[k].last_used_at)
+                oldest_key = min(
+                    self._sessions.keys(), key=lambda k: self._sessions[k].last_used_at
+                )
                 oldest_session = self._sessions.pop(oldest_key)
                 logger.info(
                     "Лимит вкладок (%d) достигнут. LRU-вытеснение сессии '%s'...",

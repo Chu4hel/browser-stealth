@@ -139,7 +139,8 @@ def test_antidetect_nodriver(mock_ensure: MagicMock) -> None:
         assert "64" in js_code
 
         # Проверяем, что команда отправлена вкладке для новых документов
-        tab.send.assert_called_once_with("mock_cdp_command")
+        send_calls = [c[0][0] for c in tab.send.call_args_list]
+        assert "mock_cdp_command" in send_calls
 
         # Проверяем мгновенную инъекцию на текущую страницу через evaluate
         tab.evaluate.assert_called_once_with(js_code)

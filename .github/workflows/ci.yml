@@ -23,9 +23,31 @@ jobs:
       - name: Run Ruff Format Check
         run: uv run ruff format --check .
 
-  test:
-    name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})
+  quality:
+    name: Types & AI readiness
     needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Run mypy
+        run: uv run mypy src/browser_stealth
+      # .env не коммитится, но EnvSyncRule требует его наличия для проверки.
+      - name: Sync environment template
+        run: uv run chutils dev sync-env --yes
+      # ManifestRule отключён сознательно: манифест живёт в корне (AGENTS.md),
+      # пакетный antigravity.md не создаётся.
+      - name: Run ai-lint
+        run: uv run chutils dev ai-lint --strict --exclude-rules ManifestRule
+
+  test:
+    name: Unit tests (Python ${{ matrix.python-version }} on ${{ matrix.os }})
+    needs: [lint, quality]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -42,5 +64,29 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
       - name: Install dependencies
         run: uv sync --all-extras
-      - name: Run tests
-        run: uv run pytest
+      - name: Run unit tests
+        run: uv run pytest -m "not e2e"
+
+  e2e:
+    name: E2E tests
+    needs: [lint, quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Ubuntu 24.04 блокирует unprivileged user namespaces через AppArmor,
+      # из-за чего Chrome не стартует без отключения sandbox.
+      CH_TESTING_NO_SANDBOX: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Allow unprivileged user namespaces (AppArmor)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Run E2E tests
+        run: uv run pytest -m e2e

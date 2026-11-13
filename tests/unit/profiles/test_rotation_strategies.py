@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 from browser_stealth.profiles.rotation import (
     LeastUsedRotation,
-    RandomRotation,
     RoundRobinRotation,
     StickyAffinityRotation,
 )

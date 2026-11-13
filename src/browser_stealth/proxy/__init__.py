@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from .cache import BoundedMemoryCacheBackend as BoundedMemoryCacheBackend
     from .cache import FileCacheBackend as FileCacheBackend
     from .extension import ChromeProxyExtension as ChromeProxyExtension
+    from .geo import COUNTRY_GEO_MAP as COUNTRY_GEO_MAP
+    from .geo import align_proxy_with_antidetect as align_proxy_with_antidetect
+    from .geo import infer_proxy_geo as infer_proxy_geo
     from .models import ProxyConfig as ProxyConfig
     from .models import ProxyHealthResult as ProxyHealthResult
     from .parser import parse_proxy as parse_proxy
@@ -29,6 +32,7 @@ _LAZY_MAPPING = {
     "AsyncProxyTunnel": (".tunnel", "AsyncProxyTunnel"),
     "BoundedMemoryCacheBackend": (".cache", "BoundedMemoryCacheBackend"),
     "ChromeProxyExtension": (".extension", "ChromeProxyExtension"),
+    "COUNTRY_GEO_MAP": (".geo", "COUNTRY_GEO_MAP"),
     "FileCacheBackend": (".cache", "FileCacheBackend"),
     "KeyringProxyStorage": (".storage", "KeyringProxyStorage"),
     "ProxyCandidate": (".resolver", "ProxyCandidate"),
@@ -37,12 +41,14 @@ _LAZY_MAPPING = {
     "ProxyPool": (".pool", "ProxyPool"),
     "ProxySecretStorage": (".storage", "ProxySecretStorage"),
     "SmartProxyResolver": (".resolver", "SmartProxyResolver"),
+    "align_proxy_with_antidetect": (".geo", "align_proxy_with_antidetect"),
     "async_nodriver_proxy": (".adapters", "async_nodriver_proxy"),
     "check_proxy": (".pool", "check_proxy"),
     "check_proxy_async": (".pool", "check_proxy_async"),
     "get_nodriver_proxy_args": (".adapters", "get_nodriver_proxy_args"),
     "get_playwright_proxy": (".adapters", "get_playwright_proxy"),
     "get_selenium_proxy": (".adapters", "get_selenium_proxy"),
+    "infer_proxy_geo": (".geo", "infer_proxy_geo"),
     "nodriver_proxy": (".adapters", "nodriver_proxy"),
     "parse_proxy": (".parser", "parse_proxy"),
     "setup_browser_proxy": (".tunnel", "setup_browser_proxy"),
@@ -62,6 +68,7 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "COUNTRY_GEO_MAP",
     "AsyncProxyTunnel",
     "BoundedMemoryCacheBackend",
     "ChromeProxyExtension",
@@ -73,12 +80,14 @@ __all__ = [
     "ProxyPool",
     "ProxySecretStorage",
     "SmartProxyResolver",
+    "align_proxy_with_antidetect",
     "async_nodriver_proxy",
     "check_proxy",
     "check_proxy_async",
     "get_nodriver_proxy_args",
     "get_playwright_proxy",
     "get_selenium_proxy",
+    "infer_proxy_geo",
     "nodriver_proxy",
     "parse_proxy",
     "setup_browser_proxy",

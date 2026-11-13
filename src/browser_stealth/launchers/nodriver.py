@@ -5,14 +5,26 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import os
+import shutil
+import sys
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+from chutils.fs import ensure_dir
+
 from browser_stealth.antidetect import get_browser_launch_args
 from browser_stealth.antidetect.config import AntidetectConfig
+from browser_stealth.antidetect.flags import FlagPolicy, sanitize_browser_args
+from browser_stealth.launchers._cdp_startup import (
+    STARTUP_TIMEOUT,
+    await_cdp_ready,
+    pick_pending_browser,
+    registered_browsers,
+)
 from browser_stealth.lifecycle import register_cleanup
 from browser_stealth.logging import get_logger as setup_logger
 from browser_stealth.profiles.hygiene import (
@@ -78,8 +90,11 @@ async def launch_nodriver(
     proxy: ProxyConfig | str | dict[str, object] | None = None,
     headless: bool = False,
     browser_args: list[str] | None = None,
+    browser_args_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
+    patch_tab_find: bool = True,
+    sandbox: bool | None = None,
     **kwargs: Any,
 ) -> Any:
     """Запускает браузер nodriver с рекомендуемыми стелс-аргументами и AntidetectConfig.
@@ -92,10 +107,16 @@ async def launch_nodriver(
             автоматически создается временное Manifest v3 расширение.
         headless: Флаг запуска в фоновом (headless) режиме.
         browser_args: Дополнительные аргументы командной строки Chromium.
+        browser_args_policy: Политика обработки неподдерживаемых флагов Chromium
+            (например, ``--disable-blink-features=AutomationControlled``).
+            По умолчанию опасные флаги удаляются с предупреждением в лог.
+            Передайте ``FlagPolicy.ERROR`` для строгой валидации.
         apply_config_to_tab: Если True, автоматически применяет конфигурацию антидетекта к первой вкладке.
         sanitize_profile_dir: Если True и передан user_data_dir, перед запуском браузера сбрасывает флаги
             аварийного завершения (exit_type="Normal") и очищает остаточные сессии/вкладки,
             предотвращая инфобар восстановления вкладок и детекты антифрода.
+        patch_tab_find: Если True, заменяет ``Tab.find`` безопасной обёрткой, которая ищет текст
+            только в основном документе и не опрашивает сторонние iframe (ошибка -32601).
         **kwargs: Дополнительные параметры для передачи в nodriver.start().
 
     Returns:
@@ -128,6 +149,9 @@ async def launch_nodriver(
     if config.user_agent and not any(a.startswith("--user-agent=") for a in merged_args):
         merged_args.append(f"--user-agent={config.user_agent}")
 
+    # Защита от неподдерживаемых и скомпрометированных флагов Chromium
+    merged_args = sanitize_browser_args(merged_args, policy=browser_args_policy)
+
     # Очистка профиля от следов падений и сброс crash flags перед запуском
     if sanitize_profile_dir and user_data_dir is not None:
         try:
@@ -135,18 +159,53 @@ async def launch_nodriver(
         except Exception as exc:
             logger.debug(f"Не удалось выполнить sanitize_profile для {user_data_dir}: {exc}")
 
+    # На Linux nodriver выбирает самый короткий путь к браузеру, из-за чего
+    # может взять snap-обёртку chromium вместо настоящего Google Chrome.
+    # Предпочитаем явный google-chrome, чтобы избежать проблем в CI.
+    if browser_executable_path is None:
+        env_path = os.environ.get(  # chutils: ignore[ChutilsIntegrationRule]
+            "BROWSER_EXECUTABLE_PATH"
+        ) or os.environ.get(  # chutils: ignore[ChutilsIntegrationRule]
+            "CHROME_BIN"  # chutils: ignore[ChutilsIntegrationRule]
+        )
+        if env_path and Path(env_path).exists():
+            browser_executable_path = env_path
+        elif sys.platform.startswith("linux"):
+            for candidate in ("google-chrome", "google-chrome-stable", "chrome"):
+                found = shutil.which(candidate)
+                if found:
+                    browser_executable_path = found
+                    break
+
     # Запуск браузера
     start_kwargs: dict[str, Any] = dict(kwargs)
     if user_data_dir is not None:
         start_kwargs["user_data_dir"] = str(user_data_dir)
     if browser_executable_path is not None:
         start_kwargs["browser_executable_path"] = str(browser_executable_path)
+    if sandbox is None:
+        sandbox = not any(
+            arg == "--no-sandbox" or arg.startswith("--no-sandbox=") for arg in merged_args
+        )
+    start_kwargs["sandbox"] = sandbox
 
-    browser = await uc.start(
-        browser_args=merged_args,
-        headless=headless,
-        **start_kwargs,
-    )
+    known_browsers = registered_browsers(uc)
+    try:
+        browser = await uc.start(
+            browser_args=merged_args,
+            headless=headless,
+            **start_kwargs,
+        )
+    except Exception as exc:
+        pending = pick_pending_browser(uc, known_browsers)
+        if pending is None:
+            raise
+        logger.warning(
+            "nodriver не дождался порта CDP (%s), продолжаем ожидание до %.0f с",
+            exc,
+            STARTUP_TIMEOUT,
+        )
+        browser = await await_cdp_ready(uc, pending, timeout=STARTUP_TIMEOUT)
 
     # Регистрация очистки в жизненном цикле
     def _cleanup_browser() -> None:
@@ -166,19 +225,30 @@ async def launch_nodriver(
 
     register_cleanup(_cleanup_browser)
 
-    # Применение AntidetectConfig к открытой вкладке
-    if apply_config_to_tab:
+    # Разрешение основной вкладки для патча find и применения AntidetectConfig
+    tab = None
+    if apply_config_to_tab or patch_tab_find:
         tab = getattr(browser, "main_tab", None)
         if tab is None:
             tabs = getattr(browser, "tabs", [])
             if tabs:
                 tab = tabs[0]
 
-        if tab is not None:
-            try:
-                await config.apply_to_nodriver(tab)
-            except Exception as exc:
-                logger.debug(f"Не удалось применить AntidetectConfig к вкладке nodriver: {exc}")
+    # Безопасный Tab.find без обхода недоверенных iframe
+    if patch_tab_find and tab is not None:
+        try:
+            from browser_stealth.humanize.safe_find import install_safe_find
+
+            install_safe_find(tab)
+        except Exception as exc:
+            logger.debug(f"Не удалось установить безопасный Tab.find: {exc}")
+
+    # Применение AntidetectConfig к открытой вкладке
+    if apply_config_to_tab and tab is not None:
+        try:
+            await config.apply_to_nodriver(tab)
+        except Exception as exc:
+            logger.debug(f"Не удалось применить AntidetectConfig к вкладке nodriver: {exc}")
 
     return browser
 
@@ -192,8 +262,11 @@ async def nodriver_session(
     proxy: ProxyConfig | str | dict[str, object] | None = None,
     headless: bool = False,
     browser_args: list[str] | None = None,
+    browser_args_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
+    patch_tab_find: bool = True,
+    sandbox: bool | None = None,
     **kwargs: Any,
 ) -> AsyncIterator[Any]:
     """Асинхронный контекстный менеджер сессии браузера nodriver с гарантированным закрытием.
@@ -205,8 +278,10 @@ async def nodriver_session(
         proxy: Настройки прокси.
         headless: Флаг запуска в headless режиме.
         browser_args: Дополнительные флаги Chromium.
+        browser_args_policy: Политика обработки неподдерживаемых флагов Chromium.
         apply_config_to_tab: Автоматически применить AntidetectConfig к вкладке.
         sanitize_profile_dir: Выполнить санитайзинг профиля перед запуском.
+        patch_tab_find: Заменить ``Tab.find`` безопасной обёрткой без обхода сторонних iframe.
         **kwargs: Дополнительные параметры nodriver.start().
 
     Yields:
@@ -219,8 +294,11 @@ async def nodriver_session(
         proxy=proxy,
         headless=headless,
         browser_args=browser_args,
+        browser_args_policy=browser_args_policy,
         apply_config_to_tab=apply_config_to_tab,
         sanitize_profile_dir=sanitize_profile_dir,
+        patch_tab_find=patch_tab_find,
+        sandbox=sandbox,
         **kwargs,
     )
     try:
@@ -293,13 +371,22 @@ async def safe_get_or_open_tab(
 
 
 def unpack_cdp_value(v: object) -> object:
-    """Рекурсивно извлекает примитивные значения из структур CDP."""
+    """Рекурсивно извлекает примитивные значения из структур CDP.
+
+    Args:
+        v: Значение CDP: dict, list, пара key/value или примитив.
+
+    Returns:
+        Развернутое значение: dict, list или примитив без оберток CDP.
+    """
     if isinstance(v, dict):
         if "value" in v:
             return unpack_cdp_value(v["value"])
         return {str(k): unpack_cdp_value(val) for k, val in v.items()}
     if isinstance(v, list):
-        if v and all(isinstance(i, (list, tuple)) and len(i) == 2 and isinstance(i[0], str) for i in v):
+        if v and all(
+            isinstance(i, (list, tuple)) and len(i) == 2 and isinstance(i[0], str) for i in v
+        ):
             return safe_extract_dict(v)
         return [unpack_cdp_value(i) for i in v]
     return v
@@ -346,7 +433,6 @@ class ChromiumProcessManager:
 
     def __init__(self) -> None:
         """Инициализирует менеджер процессов."""
-        pass
 
     async def launch(
         self,
@@ -358,6 +444,7 @@ class ChromiumProcessManager:
         extra_args: list[str] | None = None,
         browser_executable_path: Path | str | None = None,
         sandbox: bool = True,
+        flag_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     ) -> tuple[Any, Any | None]:
         """Запускает процесс Chromium через nodriver с изоляцией профиля и поддержкой прокси.
 
@@ -370,12 +457,13 @@ class ChromiumProcessManager:
             extra_args: Дополнительные флаги командной строки браузера.
             browser_executable_path: Пользовательский путь к бинарнику Chromium.
             sandbox: Использовать ли песочницу Chrome (по умолчанию True).
+            flag_policy: Политика обработки неподдерживаемых флагов Chromium.
+                По умолчанию опасные флаги удаляются с предупреждением в лог.
 
         Returns:
             Кортеж из (nodriver.Browser, AsyncProxyTunnel | None).
         """
-        p_path = Path(profile_path).resolve()
-        p_path.mkdir(parents=True, exist_ok=True)
+        p_path = ensure_dir(Path(profile_path).resolve())
         user_data_str = str(p_path)
 
         recommended_args = get_browser_launch_args()
@@ -402,6 +490,9 @@ class ChromiumProcessManager:
             for e_arg in extra_args:
                 if e_arg not in browser_args:
                     browser_args.append(e_arg)
+
+        # Защита от неподдерживаемых и скомпрометированных флагов Chromium
+        browser_args = sanitize_browser_args(browser_args, policy=flag_policy)
 
         proxy_tunnel = None
         if proxy_server:
@@ -542,11 +633,11 @@ from browser_stealth.concurrency.reaper import (
 )
 
 __all__ = [
+    "ChromiumProcessManager",
     "IdleBrowserReaper",
     "IdleBrowserReaperConfig",
     "IdleReaper",
     "IdleReaperConfig",
-    "ChromiumProcessManager",
     "close_tab",
     "is_profile_locked",
     "launch_nodriver",
