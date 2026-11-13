@@ -51,6 +51,17 @@ class RoundRobinRotation(ProfileRotationStrategy[TProfile]):
         key_fn: Callable[[TProfile], str] | None = None,
         session_id: str | None = None,
     ) -> TProfile | None:
+        """Выбирает следующий профиль по кругу, пропуская исключенные.
+
+        Args:
+            profiles: Список доступных профилей.
+            exclude: Идентификаторы профилей, исключаемых из выбора.
+            key_fn: Функция извлечения уникального ключа профиля.
+            session_id: Идентификатор сессии (не используется данной стратегией).
+
+        Returns:
+            Выбранный профиль или None, если кандидатов нет.
+        """
         k_fn = key_fn or str
         candidates = [p for p in profiles if not exclude or k_fn(p) not in exclude]
         if not candidates:
@@ -88,6 +99,17 @@ class LeastUsedRotation(ProfileRotationStrategy[TProfile]):
         key_fn: Callable[[TProfile], str] | None = None,
         session_id: str | None = None,
     ) -> TProfile | None:
+        """Выбирает профиль с наименьшим весом score_fn среди кандидатов.
+
+        Args:
+            profiles: Список доступных профилей.
+            exclude: Идентификаторы профилей, исключаемых из выбора.
+            key_fn: Функция извлечения уникального ключа профиля.
+            session_id: Идентификатор сессии (не используется данной стратегией).
+
+        Returns:
+            Профиль с минимальным весом или None, если кандидатов нет.
+        """
         k_fn = key_fn or str
         candidates = [p for p in profiles if not exclude or k_fn(p) not in exclude]
         if not candidates:
@@ -108,6 +130,17 @@ class RandomRotation(ProfileRotationStrategy[TProfile]):
         key_fn: Callable[[TProfile], str] | None = None,
         session_id: str | None = None,
     ) -> TProfile | None:
+        """Выбирает случайный профиль из списка кандидатов.
+
+        Args:
+            profiles: Список доступных профилей.
+            exclude: Идентификаторы профилей, исключаемых из выбора.
+            key_fn: Функция извлечения уникального ключа профиля.
+            session_id: Идентификатор сессии (не используется данной стратегией).
+
+        Returns:
+            Случайный профиль или None, если кандидатов нет.
+        """
         k_fn = key_fn or str
         candidates = [p for p in profiles if not exclude or k_fn(p) not in exclude]
         if not candidates:
@@ -128,11 +161,20 @@ class StickyAffinityRotation(ProfileRotationStrategy[TProfile]):
         self._affinity_map: dict[str, tuple[str, float]] = {}
 
     def bind(self, session_id: str, profile_key: str) -> None:
-        """Явно закрепляет сессию за профилем."""
+        """Явно закрепляет сессию за профилем.
+
+        Args:
+            session_id: Идентификатор пользовательской сессии.
+            profile_key: Уникальный ключ профиля, закрепляемого за сессией.
+        """
         self._affinity_map[session_id] = (profile_key, time.time())
 
     def unbind(self, session_id: str) -> None:
-        """Снимает закрепление сессии."""
+        """Снимает закрепление сессии.
+
+        Args:
+            session_id: Идентификатор пользовательской сессии.
+        """
         self._affinity_map.pop(session_id, None)
 
     def select(
@@ -143,6 +185,17 @@ class StickyAffinityRotation(ProfileRotationStrategy[TProfile]):
         key_fn: Callable[[TProfile], str] | None = None,
         session_id: str | None = None,
     ) -> TProfile | None:
+        """Возвращает закрепленный за сессией профиль или выбирает новый через fallback.
+
+        Args:
+            profiles: Список доступных профилей.
+            exclude: Идентификаторы профилей, исключаемых из выбора.
+            key_fn: Функция извлечения уникального ключа профиля.
+            session_id: Идентификатор сессии для поиска закрепления.
+
+        Returns:
+            Закрепленный или выбранный fallback-стратегией профиль, либо None.
+        """
         k_fn = key_fn or str
         now = time.time()
 
