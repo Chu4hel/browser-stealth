@@ -3,15 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from abc import ABC, abstractmethod
 from typing import Any
-
-try:
-    from chutils.plugins.interfaces import BrowserStealthPlugin
-except ImportError:
-
-    class BrowserStealthPlugin:  # type: ignore[no-redef]
-        """Fallback интерфейс BasePlugin."""
-
 
 from browser_stealth.antidetect.config import AntidetectConfig
 from browser_stealth.antidetect.core import (
@@ -19,6 +12,56 @@ from browser_stealth.antidetect.core import (
     apply_antidetect_playwright,
     apply_antidetect_selenium,
 )
+
+try:
+    from chutils.plugins.interfaces import BrowserStealthPlugin as _ChutilsPluginInterface
+except ImportError:
+    _ChutilsPluginInterface = None
+
+
+class BrowserStealthPlugin(ABC):
+    """Типизированный интерфейс плагина глубокой маскировки браузера.
+
+    Совпадает по контракту с chutils.plugins.interfaces.BrowserStealthPlugin;
+    при наличии chutils реализация регистрируется в его ABC, поэтому
+    issubclass/isinstance продолжают работать без наследования от untyped-класса.
+    """
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Уникальное имя плагина.
+
+        Returns:
+            Строковый идентификатор плагина.
+        """
+
+    @abstractmethod
+    def apply_playwright(self, context: Any, **kwargs: Any) -> None:
+        """Применяет стелс-патчи к Playwright.
+
+        Args:
+            context: Объект BrowserContext или Page Playwright.
+            **kwargs: Дополнительные параметры конфигурации маскировки.
+        """
+
+    @abstractmethod
+    def apply_selenium(self, driver: Any, **kwargs: Any) -> None:
+        """Применяет стелс-патчи к Selenium WebDriver.
+
+        Args:
+            driver: Экземпляр Selenium WebDriver.
+            **kwargs: Дополнительные параметры конфигурации маскировки.
+        """
+
+    @abstractmethod
+    def apply_nodriver(self, tab: Any, **kwargs: Any) -> None:
+        """Применяет стелс-патчи к nodriver Tab.
+
+        Args:
+            tab: Вкладка nodriver Tab.
+            **kwargs: Дополнительные параметры конфигурации маскировки.
+        """
 
 
 class BrowserStealthPluginImpl(BrowserStealthPlugin):
@@ -82,3 +125,9 @@ class BrowserStealthPluginImpl(BrowserStealthPlugin):
             loop.create_task(apply_antidetect_nodriver(tab, config=config))
         else:
             asyncio.run(apply_antidetect_nodriver(tab, config=config))
+
+
+if _ChutilsPluginInterface is not None:
+    # Виртуальная регистрация в ABC chutils: issubclass/isinstance работают
+    # без наследования от untyped-модуля.
+    _ChutilsPluginInterface.register(BrowserStealthPluginImpl)
