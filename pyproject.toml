@@ -19,6 +19,7 @@ keywords = [
 ]
 dependencies = [
     "pydantic>=2.10.0",
+    "chutils>=4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -41,7 +42,6 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "chutils",
     "cryptography>=50.0.2",
     "httpx>=0.28.1",
     "mypy>=2.3.1",
