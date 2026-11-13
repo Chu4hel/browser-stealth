@@ -20,6 +20,14 @@ class BaseCacheBackend(Generic[T]):
     """Базовый абстрактный интерфейс кэш-бэкенда."""
 
     def get(self, key: str) -> T | None:
+        """Возвращает значение по ключу.
+
+        Args:
+            key: Ключ кэша.
+
+        Returns:
+            Значение или None, если ключ отсутствует или просрочен.
+        """
         raise NotImplementedError
 
     def set(
@@ -29,12 +37,26 @@ class BaseCacheBackend(Generic[T]):
         ttl: int | None = None,
         tags: list[str] | None = None,
     ) -> None:
+        """Сохраняет значение по ключу с опциональным TTL и тегами.
+
+        Args:
+            key: Ключ кэша.
+            value: Сохраняемое значение.
+            ttl: Время жизни записи в секундах; None означает бессрочное хранение.
+            tags: Теги записи для групповой инвалидации.
+        """
         raise NotImplementedError
 
     def delete(self, key: str) -> None:
+        """Удаляет запись по ключу.
+
+        Args:
+            key: Ключ кэша.
+        """
         raise NotImplementedError
 
     def clear(self) -> None:
+        """Полностью очищает кэш."""
         raise NotImplementedError
 
 
@@ -186,7 +208,14 @@ class BoundedMemoryCacheBackend(BaseCacheBackend[str]):
         self._data: dict[str, dict[str, object]] = {}
 
     def get(self, key: str) -> str | None:
-        """Возвращает значение из кэша с проверкой срока жизни и обновлением LRU."""
+        """Возвращает значение из кэша с проверкой срока жизни и обновлением LRU.
+
+        Args:
+            key: Ключ кэша.
+
+        Returns:
+            Строковое значение или None, если ключ отсутствует или просрочен.
+        """
         with self._lock:
             entry = self._data.get(key)
             if not isinstance(entry, dict):
@@ -206,7 +235,14 @@ class BoundedMemoryCacheBackend(BaseCacheBackend[str]):
         ttl: int | None = None,
         tags: list[str] | None = None,
     ) -> None:
-        """Сохраняет значение с ограничением по максимальному количеству элементов."""
+        """Сохраняет значение с ограничением по максимальному количеству элементов.
+
+        Args:
+            key: Ключ кэша.
+            value: Сохраняемое строковое значение.
+            ttl: Время жизни записи в секундах; None означает бессрочное хранение.
+            tags: Теги записи для групповой инвалидации.
+        """
         with self._lock:
             if key in self._data:
                 self._data.pop(key)
@@ -222,12 +258,23 @@ class BoundedMemoryCacheBackend(BaseCacheBackend[str]):
                 del self._data[oldest_key]
 
     def delete(self, key: str) -> None:
-        """Удаляет ключ из кэша."""
+        """Удаляет ключ из кэша.
+
+        Args:
+            key: Ключ кэша.
+        """
         with self._lock:
             self._data.pop(key, None)
 
     def exists(self, key: str) -> bool:
-        """Проверяет наличие непросроченного ключа."""
+        """Проверяет наличие непросроченного ключа.
+
+        Args:
+            key: Ключ кэша.
+
+        Returns:
+            True, если ключ есть и не просрочен, иначе False.
+        """
         return self.get(key) is not None
 
     def clear(self) -> None:
@@ -236,7 +283,11 @@ class BoundedMemoryCacheBackend(BaseCacheBackend[str]):
             self._data.clear()
 
     def invalidate_tag(self, tag: str) -> None:
-        """Инвалидирует все ключи с заданным тегом."""
+        """Инвалидирует все ключи с заданным тегом.
+
+        Args:
+            tag: Тег, записи с которым нужно удалить.
+        """
         with self._lock:
             to_del = [
                 k
