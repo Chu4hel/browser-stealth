@@ -183,7 +183,7 @@ def get_e2e_browser_args() -> list[str]:
     no_sandbox = str(configured).lower() in {"1", "true", "yes", "on"}
     is_root = hasattr(os, "geteuid") and os.geteuid() == 0
     if sys.platform.startswith("linux") and (no_sandbox or is_root):
-        return ["--no-sandbox"]
+        return ["--no-sandbox", "--disable-setuid-sandbox"]
     return []
 
 

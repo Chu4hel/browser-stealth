@@ -85,6 +85,7 @@ async def launch_nodriver(
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
     patch_tab_find: bool = True,
+    sandbox: bool | None = None,
     **kwargs: Any,
 ) -> Any:
     """Запускает браузер nodriver с рекомендуемыми стелс-аргументами и AntidetectConfig.
@@ -155,6 +156,11 @@ async def launch_nodriver(
         start_kwargs["user_data_dir"] = str(user_data_dir)
     if browser_executable_path is not None:
         start_kwargs["browser_executable_path"] = str(browser_executable_path)
+    if sandbox is None:
+        sandbox = not any(
+            arg == "--no-sandbox" or arg.startswith("--no-sandbox=") for arg in merged_args
+        )
+    start_kwargs["sandbox"] = sandbox
 
     browser = await uc.start(
         browser_args=merged_args,
@@ -221,6 +227,7 @@ async def nodriver_session(
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
     patch_tab_find: bool = True,
+    sandbox: bool | None = None,
     **kwargs: Any,
 ) -> AsyncIterator[Any]:
     """Асинхронный контекстный менеджер сессии браузера nodriver с гарантированным закрытием.
@@ -252,6 +259,7 @@ async def nodriver_session(
         apply_config_to_tab=apply_config_to_tab,
         sanitize_profile_dir=sanitize_profile_dir,
         patch_tab_find=patch_tab_find,
+        sandbox=sandbox,
         **kwargs,
     )
     try:

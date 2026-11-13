@@ -25,7 +25,7 @@ def test_no_sandbox_is_added_on_linux_when_configured(
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setenv("CH_TESTING_NO_SANDBOX", "1")
 
-    assert get_e2e_browser_args() == ["--no-sandbox"]
+    assert get_e2e_browser_args() == ["--no-sandbox", "--disable-setuid-sandbox"]
 
 
 def test_no_sandbox_is_not_added_on_linux_by_default(
