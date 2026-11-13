@@ -116,3 +116,53 @@ def test_pydantic_validator_rejects_mismatched_client_hints() -> None:
             ),
             client_hints={"platform": "Linux"},
         )
+
+
+@pytest.mark.parametrize(
+    ("os_target", "foreign_font"),
+    [
+        ("macos", "Segoe UI"),
+        ("macos", "DejaVu Sans"),
+        ("linux", "Calibri"),
+        ("linux", "Menlo"),
+        ("windows", "SF Pro Text"),
+        ("windows", "Ubuntu Mono"),
+    ],
+)
+def test_pydantic_validator_rejects_foreign_os_fonts(
+    os_target: str, foreign_font: str
+) -> None:
+    """Проверяет отклонение шрифтов чужой платформы для каждой ОС."""
+    renderers = {
+        "macos": "ANGLE (Apple, Apple M1, OpenGL 4.1)",
+        "linux": "ANGLE (Mesa, Mesa Intel(R) UHD Graphics 630 (CFL GT2), OpenGL 4.5.0)",
+        "windows": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0)",
+    }
+    platforms = {"macos": "macOS", "linux": "Linux", "windows": "Windows"}
+
+    with pytest.raises(ValidationError, match="шрифты чужой платформы"):
+        FingerprintProfile(
+            os=os_target,
+            webgl=WebGLFingerprint(renderer=renderers[os_target]),
+            client_hints={"platform": platforms[os_target]},
+            fonts=["Arial", foreign_font],
+        )
+
+
+def test_procedural_synthesizer_fonts_match_os() -> None:
+    """Проверяет, что синтезированные шрифты принадлежат пулу целевой ОС."""
+    from browser_stealth.fingerprint.database import (
+        FONTS_LINUX,
+        FONTS_MACOS,
+        FONTS_WINDOWS,
+    )
+
+    pools = {"windows": FONTS_WINDOWS, "macos": FONTS_MACOS, "linux": FONTS_LINUX}
+
+    for os_target, pool in pools.items():
+        synth = ProceduralSynthesizer(os_target=os_target)
+        for i in range(10):
+            fp = synth.synthesize(f"seed_fonts_{os_target}_{i}")
+            assert fp.fonts, "Список шрифтов не должен быть пустым"
+            assert set(fp.fonts).issubset(set(pool))
+            assert len(fp.fonts) == len(set(fp.fonts)), "Шрифты не должны дублироваться"

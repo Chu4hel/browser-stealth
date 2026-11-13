@@ -132,6 +132,9 @@ class FingerprintProfile(BaseModel):
     media_devices: list[MediaDeviceItem] = Field(
         default_factory=list, description="Список эмулируемых медиаустройств."
     )
+    fonts: list[str] = Field(
+        default_factory=list, description="Список системных шрифтов, согласованный с ОС профиля."
+    )
     client_hints: dict[str, Any] = Field(
         default_factory=dict, description="Словарь согласованных Client Hints."
     )
@@ -170,7 +173,39 @@ class FingerprintProfile(BaseModel):
                 raise ValueError(
                     f"Неконсистентный профиль: для ОС {self.os} ожидается platform 'Windows' в client_hints, получено '{platform_ch}'."
                 )
+
+        self._validate_fonts_consistency(os_lower)
         return self
+
+    def _validate_fonts_consistency(self, os_lower: str) -> None:
+        """Проверяет, что системные шрифты профиля соответствуют заявленной ОС.
+
+        Args:
+            os_lower: Операционная система профиля в нижнем регистре.
+
+        Raises:
+            ValueError: Если список шрифтов содержит шрифты чужой платформы.
+        """
+        if not self.fonts:
+            return
+
+        from .database import LINUX_ONLY_FONTS, MACOS_ONLY_FONTS, WINDOWS_ONLY_FONTS
+
+        if os_lower in ("macos", "darwin", "mac"):
+            foreign = WINDOWS_ONLY_FONTS | LINUX_ONLY_FONTS
+        elif os_lower in ("linux",):
+            foreign = WINDOWS_ONLY_FONTS | MACOS_ONLY_FONTS
+        elif os_lower in ("windows", "win"):
+            foreign = MACOS_ONLY_FONTS | LINUX_ONLY_FONTS
+        else:
+            return
+
+        incompatible = sorted({font for font in self.fonts if font in foreign})
+        if incompatible:
+            raise ValueError(
+                f"Неконсистентный профиль: для ОС {self.os} список шрифтов содержит "
+                f"шрифты чужой платформы: {', '.join(incompatible)}."
+            )
 
     def to_antidetect_config(self, stealth_minimal: bool = True) -> AntidetectConfig:
         """Конвертирует профиль в AntidetectConfig для браузерных движков.

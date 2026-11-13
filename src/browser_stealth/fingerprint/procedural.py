@@ -15,6 +15,9 @@ from .database import (
     AUDIO_OUTPUTS_LINUX,
     AUDIO_OUTPUTS_MAC,
     AUDIO_OUTPUTS_RU,
+    FONTS_LINUX,
+    FONTS_MACOS,
+    FONTS_WINDOWS,
     LINUX_TIERS,
     MACOS_TIERS,
     VIDEO_INPUTS,
@@ -195,6 +198,17 @@ class ProceduralSynthesizer:
                 )
             )
 
+        # 6.5. Системные шрифты строго из пула целевой ОС (детект через Canvas/DOM)
+        if is_macos:
+            font_pool = FONTS_MACOS
+        elif is_linux:
+            font_pool = FONTS_LINUX
+        else:
+            font_pool = FONTS_WINDOWS
+
+        fonts_count = rng.randint(10, min(18, len(font_pool)))
+        fonts = sorted(rng.sample(font_pool, fonts_count))
+
         # 7. User-Agent и Client Hints
         chrome_major = rng.randint(124, 131)
         chrome_patch = rng.randint(100, 999)
@@ -280,6 +294,7 @@ class ProceduralSynthesizer:
                 noise_factor=noise_factor,
             ),
             media_devices=media_devices,
+            fonts=fonts,
             client_hints=client_hints,
             source="procedural",
         )
