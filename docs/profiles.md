@@ -64,14 +64,22 @@ sanitize_profile(profile_path)
 `chrome://newtab`) закрываются, а основная рабочая страница сохраняется.
 
 ```python
-from browser_stealth import discover_active_cdp_endpoint, launch_nodriver
+from browser_stealth import (
+    discover_active_cdp_endpoint,
+    launch_nodriver,
+    resolve_profile_dir,
+)
 
-endpoint = discover_active_cdp_endpoint("/path/to/profile")
+profile = resolve_profile_dir("/path/to/profile")
+endpoint = discover_active_cdp_endpoint(profile)
 if endpoint is not None:
     host, port = endpoint
 
-browser = await launch_nodriver(user_data_dir="/path/to/profile")
+browser = await launch_nodriver(user_data_dir=profile)
 ```
+
+Для UNC-путей Windows (`\\\\server\\share\\profile`) `resolve_profile_dir`
+автоматически перенаправляет профиль в `%LOCALAPPDATA%/browser-stealth`.
 
 ---
 

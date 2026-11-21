@@ -47,6 +47,8 @@
 | `nodriver_session` | Асинхронный контекстный менеджер безопасной сессии nodriver |
 | `discover_active_cdp_endpoint` | Поиск CDP-эндпоинта Chromium, уже использующего каталог профиля |
 | `cleanup_duplicate_empty_tabs` | Закрытие лишних пустых вкладок с сохранением рабочей страницы |
+| `discover_browser_executable` | Поиск установленного Chrome, Edge/EdgeCore, Yandex Browser или Brave |
+| `resolve_profile_dir` | Разрешение профиля и перенаправление UNC-путей на локальный диск |
 | `close_tab` | Безопасное закрытие вкладки nodriver с таймаутом |
 | `launch_camoufox` | Запуск антидетект-браузера Camoufox (Firefox) |
 
@@ -144,3 +146,19 @@ Read-only инспекция страницы для ИИ-агентов и от
 | `DOMActionRecorder`, `DOMActionRecorderHUD` | Запись действий пользователя и HUD-чек-лист |
 | `LiveBrowserSession` | Изолированная сессия реального браузера с гарантированной очисткой |
 | `assert_extraction_complete`, `assert_schema_match`, `assert_valid_url`, `assert_valid_price` | Проверки полноты и формата извлечённых данных |
+
+---
+
+## 11. Модуль `browser_stealth.connection`
+
+Диагностика WebSocket, процесса и состояния CDP-сессии.
+
+| Имя | Описание |
+|---|---|
+| `check_browser_alive` | Проверка локального процесса и удалённого CDP-подключения |
+| `is_ws_closed` | Проверка закрытия WebSocket для websockets >= 14 и старых версий |
+| `is_browser_connection_error` | Классификация ошибок `BrokenPipe`, `target closed`, `session closed` |
+| `get_browser_main_tab` | Безопасное получение `main_tab` без `StopIteration` |
+| `ping_browser_tab` | Быстрый CDP-пинг вкладки |
+| `extract_cdp_endpoint` | Извлечение `host` и `port` из объекта браузера |
+| `detach_for_restart` | Закрытие WebSocket без завершения процесса Chromium |

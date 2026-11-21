@@ -9,6 +9,7 @@ from . import (
     antidetect,
     bidi,
     concurrency,
+    connection,
     fingerprint,
     humanize,
     inspect,
@@ -37,6 +38,15 @@ from .antidetect.flags import (
 )
 from .bidi.client import BiDiClient
 from .bidi.session import BiDiSession, bidi_session
+from .connection import (
+    check_browser_alive,
+    detach_for_restart,
+    extract_cdp_endpoint,
+    get_browser_main_tab,
+    is_browser_connection_error,
+    is_ws_closed,
+    ping_browser_tab,
+)
 from .crypto import decrypt_portable, encrypt_portable
 from .exceptions import (
     BrowserStealthError,
@@ -79,8 +89,10 @@ from .launchers.nodriver import (
     cleanup_duplicate_empty_tabs,
     close_tab,
     discover_active_cdp_endpoint,
+    discover_browser_executable,
     launch_nodriver,
     nodriver_session,
+    resolve_profile_dir,
 )
 from .profiles.manager import ProfileManager
 from .profiles.models import BrowserProfile
@@ -131,22 +143,30 @@ __all__ = [
     "bidi",
     "bidi_session",
     "camoufox",
+    "check_browser_alive",
     "cleanup_duplicate_empty_tabs",
     "click",
     "close_tab",
     "concurrency",
+    "connection",
     "decrypt_portable",
+    "detach_for_restart",
     "detect_cf_turnstile",
     "discover_active_cdp_endpoint",
+    "discover_browser_executable",
     "encrypt_portable",
+    "extract_cdp_endpoint",
     "find_unsupported_flags",
     "fingerprint",
     "get_browser_launch_args",
+    "get_browser_main_tab",
     "get_client_hints",
     "human_sleep",
     "humanize",
     "inspect",
+    "is_browser_connection_error",
     "is_cf_turnstile_solved",
+    "is_ws_closed",
     "launch_camoufox",
     "launch_nodriver",
     "launchers",
@@ -154,9 +174,11 @@ __all__ = [
     "nodriver",
     "nodriver_session",
     "parse_proxy",
+    "ping_browser_tab",
     "profiles",
     "proxy",
     "raise_for_unsupported_flags",
+    "resolve_profile_dir",
     "sanitize_browser_args",
     "scroll_to",
     "solve_cf_turnstile",

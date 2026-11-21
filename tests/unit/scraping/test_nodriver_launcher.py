@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from browser_stealth.antidetect.config import AntidetectConfig
+from browser_stealth.connection import BROWSER_DETACHED_ATTR
 from browser_stealth.launchers.nodriver import (
     _get_nodriver_module,
     launch_nodriver,
@@ -54,6 +55,29 @@ async def test_launch_nodriver_default() -> None:
 
 
 @pytest.mark.asyncio
+async def test_launch_nodriver_uses_discovered_browser_executable() -> None:
+    """Без явного пути launch_nodriver использует найденный браузер."""
+    mock_uc = MagicMock()
+    mock_browser = MagicMock()
+    mock_browser.main_tab = MagicMock()
+    mock_uc.start = AsyncMock(return_value=mock_browser)
+
+    with (
+        patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
+        patch(
+            "browser_stealth.launchers.nodriver.discover_browser_executable",
+            return_value="/discovered/chrome",
+        ) as mock_discover,
+        patch.object(AntidetectConfig, "apply_to_nodriver", new_callable=AsyncMock),
+    ):
+        await launch_nodriver(headless=True)
+
+    mock_discover.assert_called_once_with(None)
+    _, kwargs = mock_uc.start.call_args
+    assert kwargs["browser_executable_path"] == "/discovered/chrome"
+
+
+@pytest.mark.asyncio
 async def test_launch_nodriver_with_proxy_and_custom_args() -> None:
     """Проверка добавления аргументов прокси и пользовательских флагов."""
     mock_uc = MagicMock()
@@ -97,7 +121,7 @@ async def test_nodriver_session_context_manager() -> None:
 
 
 @pytest.mark.asyncio
-async def test_launch_nodriver_user_data_dir_and_executable() -> None:
+async def test_launch_nodriver_user_data_dir_and_executable(tmp_path: Path) -> None:
     """Проверка передачи user_data_dir и browser_executable_path в uc.start."""
     mock_uc = MagicMock()
     mock_browser = MagicMock()
@@ -109,16 +133,16 @@ async def test_launch_nodriver_user_data_dir_and_executable() -> None:
         patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
     ):
         await launch_nodriver(
-            user_data_dir="/tmp/chrome_profile",
+            user_data_dir=tmp_path,
             browser_executable_path="/usr/bin/google-chrome",
         )
         _, kwargs = mock_uc.start.call_args
-        assert kwargs["user_data_dir"] == "/tmp/chrome_profile"
+        assert kwargs["user_data_dir"] == str(tmp_path.resolve())
         assert kwargs["browser_executable_path"] == "/usr/bin/google-chrome"
 
 
 @pytest.mark.asyncio
-async def test_launch_nodriver_sanitizes_profile() -> None:
+async def test_launch_nodriver_sanitizes_profile(tmp_path: Path) -> None:
     """Проверка вызова sanitize_profile перед стартом nodriver при указании user_data_dir."""
     mock_uc = MagicMock()
     mock_browser = MagicMock()
@@ -130,8 +154,8 @@ async def test_launch_nodriver_sanitizes_profile() -> None:
         patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
         patch("browser_stealth.launchers.nodriver.sanitize_profile") as mock_sanitize,
     ):
-        await launch_nodriver(user_data_dir="/tmp/chrome_profile")
-        mock_sanitize.assert_called_once_with("/tmp/chrome_profile")
+        await launch_nodriver(user_data_dir=tmp_path)
+        mock_sanitize.assert_called_once_with(tmp_path.resolve())
 
 
 @pytest.mark.asyncio
@@ -278,6 +302,23 @@ async def test_nodriver_session_keeps_reattached_browser_running() -> None:
 
     mock_browser.stop.assert_not_called()
     mock_browser.aclose.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_nodriver_session_skips_stop_after_graceful_detach() -> None:
+    """После detach_for_restart выход из сессии не завершает Chromium."""
+    mock_browser = MagicMock()
+    mock_browser.stop = AsyncMock()
+    setattr(mock_browser, BROWSER_DETACHED_ATTR, True)
+
+    with patch(
+        "browser_stealth.launchers.nodriver.launch_nodriver",
+        new=AsyncMock(return_value=mock_browser),
+    ):
+        async with nodriver_session() as browser:
+            assert browser is mock_browser
+
+    mock_browser.stop.assert_not_called()
 
 
 @pytest.mark.asyncio

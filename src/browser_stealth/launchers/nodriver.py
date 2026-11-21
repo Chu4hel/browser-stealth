@@ -6,19 +6,20 @@ import asyncio
 import inspect
 import json
 import os
-import shutil
-import sys
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from chutils.fs import ensure_dir
-
 from browser_stealth.antidetect import get_browser_launch_args
 from browser_stealth.antidetect.config import AntidetectConfig
 from browser_stealth.antidetect.flags import FlagPolicy, sanitize_browser_args
+from browser_stealth.connection import BROWSER_DETACHED_ATTR
+from browser_stealth.launchers._browser_paths import (
+    discover_browser_executable,
+    resolve_profile_dir,
+)
 from browser_stealth.launchers._cdp_discovery import discover_active_cdp_endpoint
 from browser_stealth.launchers._cdp_startup import (
     STARTUP_TIMEOUT,
@@ -231,6 +232,8 @@ async def _configure_browser(
 
     def _cleanup_browser() -> Any:
         try:
+            if getattr(browser, BROWSER_DETACHED_ATTR, False) is True:
+                return None
             if reattached:
                 close_method = getattr(browser, "aclose", None)
                 if callable(close_method):
@@ -325,6 +328,8 @@ async def _close_browser(browser: Any, *, timeout: float) -> None:
         browser: Экземпляр nodriver.Browser.
         timeout: Максимальное время ожидания закрытия.
     """
+    if getattr(browser, BROWSER_DETACHED_ATTR, False) is True:
+        return
     if getattr(browser, _REATTACHED_ATTR, False) is True:
         close_method = getattr(browser, "aclose", None)
         if callable(close_method):
@@ -407,6 +412,9 @@ async def launch_nodriver(
     if config is None:
         config = AntidetectConfig.preset_stealth_nodriver()
 
+    if user_data_dir is not None:
+        user_data_dir = resolve_profile_dir(user_data_dir)
+
     # Переподключение к уже запущенному Chromium до санитизации профиля
     if auto_reattach and user_data_dir is not None:
         try:
@@ -456,23 +464,14 @@ async def launch_nodriver(
         except Exception as exc:
             logger.debug(f"Не удалось выполнить sanitize_profile для {user_data_dir}: {exc}")
 
-    # На Linux nodriver выбирает самый короткий путь к браузеру, из-за чего
-    # может взять snap-обёртку chromium вместо настоящего Google Chrome.
-    # Предпочитаем явный google-chrome, чтобы избежать проблем в CI.
+    # Кроссплатформенный поиск браузера: Chrome, Edge/EdgeCore, Yandex, Brave.
     if browser_executable_path is None:
         env_path = os.environ.get(  # chutils: ignore[ChutilsIntegrationRule]
             "BROWSER_EXECUTABLE_PATH"
         ) or os.environ.get(  # chutils: ignore[ChutilsIntegrationRule]
             "CHROME_BIN"  # chutils: ignore[ChutilsIntegrationRule]
         )
-        if env_path and Path(env_path).exists():
-            browser_executable_path = env_path
-        elif sys.platform.startswith("linux"):
-            for candidate in ("google-chrome", "google-chrome-stable", "chrome"):
-                found = shutil.which(candidate)
-                if found:
-                    browser_executable_path = found
-                    break
+        browser_executable_path = discover_browser_executable(env_path)
 
     # Запуск браузера
     start_kwargs: dict[str, Any] = dict(kwargs)
@@ -717,8 +716,10 @@ class ChromiumProcessManager:
         Returns:
             Кортеж из (nodriver.Browser, AsyncProxyTunnel | None).
         """
-        p_path = ensure_dir(Path(profile_path).resolve())
+        p_path = resolve_profile_dir(profile_path)
         user_data_str = str(p_path)
+        if browser_executable_path is None:
+            browser_executable_path = discover_browser_executable()
 
         recommended_args = get_browser_launch_args()
         browser_args: list[str] = [
@@ -895,9 +896,11 @@ __all__ = [
     "cleanup_duplicate_empty_tabs",
     "close_tab",
     "discover_active_cdp_endpoint",
+    "discover_browser_executable",
     "is_profile_locked",
     "launch_nodriver",
     "nodriver_session",
+    "resolve_profile_dir",
     "safe_extract_dict",
     "safe_get_or_open_tab",
     "sanitize_profile",
