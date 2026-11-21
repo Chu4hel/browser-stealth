@@ -129,18 +129,18 @@ async def test_async_type_text_nodriver() -> None:
     """Проверяет имитацию ввода текста с опечатками и Backspace с nodriver."""
     tab = AsyncMock()
     tab._is_nodriver = True
-    tab.find = AsyncMock()
+    tab.select = AsyncMock()
     tab.send = AsyncMock()
     tab.evaluate = AsyncMock()
 
     mock_element = AsyncMock()
     mock_element._is_nodriver = True
-    tab.find.return_value = mock_element
+    tab.select.return_value = mock_element
 
     await async_type_text(tab, selector="#username", text="hello", error_rate=0.0, speed_wpm=300.0)
 
-    # Проверяем поиск элемента и вызов фокуса
-    tab.find.assert_called_once_with("#username")
+    # Проверяем поиск элемента по CSS-селектору и вызов фокуса
+    tab.select.assert_called_once_with("#username")
     mock_element.focus.assert_called_once()
 
     # Должны быть отправлены события нажатия клавиш (keydown, keyup для каждого символа)
@@ -151,16 +151,70 @@ async def test_async_type_text_nodriver() -> None:
 
 
 @pytest.mark.asyncio
-async def test_async_type_text_nodriver_paste_threshold(mocker: MockerFixture) -> None:
-    """Проверяет адаптивную вставку длинного текста через paste_threshold в nodriver."""
+async def test_async_type_text_nodriver_find_fallback() -> None:
+    """Проверяет fallback на page.find(), если page.select() не нашёл элемент."""
     tab = AsyncMock()
     tab._is_nodriver = True
+    tab.select = AsyncMock(return_value=None)
     tab.find = AsyncMock()
     tab.send = AsyncMock()
+    tab.evaluate = AsyncMock()
 
     mock_element = AsyncMock()
     mock_element._is_nodriver = True
     tab.find.return_value = mock_element
+
+    await async_type_text(tab, selector="#username", text="hello", error_rate=0.0, speed_wpm=300.0)
+
+    tab.select.assert_called_once_with("#username")
+    tab.find.assert_called_once_with("#username")
+    mock_element.focus.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_type_text_nodriver_select_error_fallback() -> None:
+    """Проверяет fallback на page.find(), если page.select() выбросил исключение."""
+    tab = AsyncMock()
+    tab._is_nodriver = True
+    tab.select = AsyncMock(side_effect=RuntimeError("Element not found"))
+    tab.find = AsyncMock()
+    tab.send = AsyncMock()
+    tab.evaluate = AsyncMock()
+
+    mock_element = AsyncMock()
+    mock_element._is_nodriver = True
+    tab.find.return_value = mock_element
+
+    await async_type_text(tab, selector="#username", text="hello", error_rate=0.0, speed_wpm=300.0)
+
+    tab.find.assert_called_once_with("#username")
+    mock_element.focus.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_type_text_nodriver_element_not_found() -> None:
+    """Проверяет ошибку, если элемент не найден ни по селектору, ни по тексту."""
+    tab = AsyncMock()
+    tab._is_nodriver = True
+    tab.select = AsyncMock(return_value=None)
+    tab.find = AsyncMock(return_value=None)
+    tab.send = AsyncMock()
+
+    with pytest.raises(RuntimeError, match="Не удалось найти элемент"):
+        await async_type_text(tab, selector="#missing", text="hello")
+
+
+@pytest.mark.asyncio
+async def test_async_type_text_nodriver_paste_threshold(mocker: MockerFixture) -> None:
+    """Проверяет адаптивную вставку длинного текста через paste_threshold в nodriver."""
+    tab = AsyncMock()
+    tab._is_nodriver = True
+    tab.select = AsyncMock()
+    tab.send = AsyncMock()
+
+    mock_element = AsyncMock()
+    mock_element._is_nodriver = True
+    tab.select.return_value = mock_element
 
     sleep_mock = mocker.patch("asyncio.sleep", new_callable=AsyncMock)
     long_text = "Длинный текст для вставки через буфер обмена nodriver" * 2
@@ -174,7 +228,7 @@ async def test_async_type_text_nodriver_paste_threshold(mocker: MockerFixture) -
         paste_delay_after=(0.3, 0.5),
     )
 
-    tab.find.assert_called_once_with("#username")
+    tab.select.assert_called_once_with("#username")
     mock_element.focus.assert_called_once()
 
     # Должен быть вызван send с insert_text
@@ -193,12 +247,12 @@ async def test_async_type_text_nodriver_delayed_fix(mocker: MockerFixture) -> No
     """Проверяет отправку событий клавиш ArrowLeft и End при delayed_fix_rate в nodriver."""
     tab = AsyncMock()
     tab._is_nodriver = True
-    tab.find = AsyncMock()
+    tab.select = AsyncMock()
     tab.send = AsyncMock()
 
     mock_element = AsyncMock()
     mock_element._is_nodriver = True
-    tab.find.return_value = mock_element
+    tab.select.return_value = mock_element
 
     mocker.patch("asyncio.sleep", new_callable=AsyncMock)
     long_text = "Тестирование nodriver с исправлением опечаток стрелками"
@@ -212,7 +266,7 @@ async def test_async_type_text_nodriver_delayed_fix(mocker: MockerFixture) -> No
         speed_wpm=500.0,
     )
 
-    tab.find.assert_called_once_with("#username")
+    tab.select.assert_called_once_with("#username")
     mock_element.focus.assert_called_once()
 
     # Извлекаем все клавиши, отправленные через dispatch_key_event
@@ -537,7 +591,7 @@ async def test_async_type_text_timeout() -> None:
         await asyncio.sleep(0.5)
 
     mock_element.focus = slow_focus
-    tab.find = AsyncMock(return_value=mock_element)
+    tab.select = AsyncMock(return_value=mock_element)
 
     with pytest.raises((TimeoutError, asyncio.TimeoutError)):
         await async_type_text(tab, selector="#input", text="hello", timeout=0.02)

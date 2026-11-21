@@ -114,6 +114,46 @@ async def _dom_safe_heal(page: Any, selector: str, expected_text: str) -> None:
             pass
 
 
+async def _async_find_input_element(page: Any, selector: str) -> Any:
+    """Находит элемент ввода в nodriver по CSS-селектору или видимому тексту.
+
+    В ``nodriver`` метод ``Tab.find()`` ищет элементы по видимому тексту, а не
+    по CSS-селектору, поэтому основным способом поиска является
+    ``Tab.select()``. Поиск по тексту остаётся безопасным фоллбеком для
+    случаев, когда передан не CSS-селектор.
+
+    Args:
+        page: Вкладка nodriver (Tab).
+        selector: CSS-селектор целевого элемента.
+
+    Returns:
+        Нативный элемент страницы.
+
+    Raises:
+        RuntimeError: Если элемент не найден ни по селектору, ни по тексту.
+    """
+    element: Any | None = None
+
+    select = getattr(page, "select", None)
+    if callable(select):
+        try:
+            element = await select(selector)
+        except Exception as exc:
+            logger.debug("Поиск элемента по CSS-селектору '%s' не удался: %s", selector, exc)
+
+    if element is None:
+        find = getattr(page, "find", None)
+        if callable(find):
+            try:
+                element = await find(selector)
+            except Exception as exc:
+                logger.debug("Поиск элемента по тексту '%s' не удался: %s", selector, exc)
+
+    if element is None:
+        raise RuntimeError(f"Не удалось найти элемент ввода по селектору или тексту: {selector!r}")
+    return element
+
+
 async def _cdp_native_paste(
     page: Any,
     selector: str,
@@ -142,7 +182,7 @@ async def _cdp_native_paste(
         await set_isolated_clipboard_text(page, text)
 
         # 2. Фокусируем элемент
-        element = await page.find(selector)
+        element = await _async_find_input_element(page, selector)
         await element.focus()
 
         # 3. Отправляем нативные CDP нажатия клавиш Ctrl+V / Cmd+V с командой paste
@@ -218,7 +258,7 @@ async def _async_type_nodriver(
     _ensure_nodriver()
     from nodriver.cdp import input_ as cdp_input
 
-    element = await page.find(selector)
+    element = await _async_find_input_element(page, selector)
     await element.focus()
 
     if paste_threshold is not None and len(text) >= paste_threshold:
