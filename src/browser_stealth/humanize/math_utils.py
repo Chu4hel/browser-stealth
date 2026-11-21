@@ -279,8 +279,30 @@ class WindMouseGenerator:
                 v_x = (v_x / v_mag) * v_clip
                 v_y = (v_y / v_mag) * v_clip
 
+            # Не позволяем шагу проскочить цель: у финиша длина шага
+            # ограничена оставшимся расстоянием, иначе инерция WindMouse
+            # выносит курсор в соседний пункт компактного меню
+            # (ISSUE-20261120-B7A1).
+            step_len = math.hypot(v_x, v_y)
+            if step_len > dist:
+                scale = dist / step_len
+                v_x *= scale
+                v_y *= scale
+
             current_x += v_x
             current_y += v_y
+
+            # Не выпускаем курсор за цель по осям движения: боковой снос
+            # не должен позволить обойти точку и уйти в соседний пункт
+            # компактного меню (ISSUE-20261120-B7A1).
+            if dest_x > start_x:
+                current_x = min(current_x, float(dest_x))
+            elif dest_x < start_x:
+                current_x = max(current_x, float(dest_x))
+            if dest_y > start_y:
+                current_y = min(current_y, float(dest_y))
+            elif dest_y < start_y:
+                current_y = max(current_y, float(dest_y))
 
             pt_x = round(current_x)
             pt_y = round(current_y)

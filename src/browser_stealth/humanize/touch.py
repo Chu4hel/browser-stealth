@@ -74,6 +74,7 @@ class TouchGestureGenerator:
         y: float,
         *,
         hold_time: float = 0.08,
+        bounds: tuple[float, float, float, float] | None = None,
     ) -> list[TouchPoint]:
         """Генерирует последовательность точек для одиночного касания (tap).
 
@@ -81,6 +82,9 @@ class TouchGestureGenerator:
             x: Координата X касания.
             y: Координата Y касания.
             hold_time: Время удержания пальца на экране в секундах.
+            bounds: Границы целевого элемента (x_min, y_min, x_max, y_max).
+                Если заданы, микросдвиг пальца не выходит за них. Без границ
+                дрейф может попасть в соседний элемент компактного меню.
 
         Returns:
             Список точек TouchPoint (касание и микросдвиг).
@@ -101,9 +105,15 @@ class TouchGestureGenerator:
         # Микросдвиг во время удержания пальца (finger tremor)
         jitter_x = random.uniform(-1.5, 1.5) * self.jitter
         jitter_y = random.uniform(-1.5, 1.5) * self.jitter
+        tap_x = x + jitter_x
+        tap_y = y + jitter_y
+        if bounds is not None:
+            min_x, min_y, max_x, max_y = bounds
+            tap_x = min(max(tap_x, min_x), max_x)
+            tap_y = min(max(tap_y, min_y), max_y)
         p2 = TouchPoint(
-            x=x + jitter_x,
-            y=y + jitter_y,
+            x=tap_x,
+            y=tap_y,
             radius_x=rx * 1.05,
             radius_y=ry * 1.05,
             force=f,
