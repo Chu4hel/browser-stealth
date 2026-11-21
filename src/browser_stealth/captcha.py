@@ -52,7 +52,14 @@ class CaptchaSnapshot(BaseModel):
 
 
 def extract_captcha_key(src: str) -> str:
-    """Извлекает параметр ``key`` из URL изображения капчи."""
+    """Извлекает параметр ``key`` из URL изображения капчи.
+
+    Args:
+        src: URL или data-URL изображения капчи.
+
+    Returns:
+        Значение параметра ``key`` или пустая строка, если его нет.
+    """
     if not src:
         return ""
     values = parse_qs(urlsplit(src).query).get("key", [])

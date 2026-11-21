@@ -506,7 +506,14 @@ def _question_payload(
 
 
 def build_fill_form_js(questions: Sequence[FormQuestion | Mapping[str, Any]]) -> str:
-    """Формирует JavaScript для заполнения формы подготовленными ответами."""
+    """Формирует JavaScript для заполнения формы подготовленными ответами.
+
+    Args:
+        questions: Вопросы с заполненными ``suggested_answer`` или ``user_answer``.
+
+    Returns:
+        Самовызывающееся JavaScript-выражение для передачи в ``tab.evaluate``.
+    """
     payload = _question_payload(questions)
     return f"({_JS_FILL_FORM})({json.dumps(payload, ensure_ascii=False)})"
 
