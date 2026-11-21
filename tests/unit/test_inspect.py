@@ -467,6 +467,24 @@ async def test_async_find_cascade_uses_one_atomic_query() -> None:
 
 
 @pytest.mark.asyncio
+async def test_async_find_cascade_accepts_sync_select_result() -> None:
+    """Синхронный mock select возвращает Element без TypeError в wait_for."""
+    element = object()
+
+    class SyncSelectTab:
+        async def evaluate(self, script: str) -> object:
+            return "#sync"
+
+        def select(self, selector: str, timeout: float = 10.0) -> object:
+            return element
+
+    found, matched = await async_find_cascade(SyncSelectTab(), ["#sync"])
+
+    assert found is element
+    assert matched == "#sync"
+
+
+@pytest.mark.asyncio
 async def test_async_find_cascade_returns_missing_without_match() -> None:
     """При отсутствии совпадений возвращается (None, None)."""
     tab = FakeCascadeTab(None, object())

@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Sequence
+from inspect import isawaitable
 from typing import Any
 
 from browser_stealth.humanize.safe_find import async_find_by_text
@@ -49,6 +50,8 @@ async def _select(tab: Any, selector: str, timeout: float) -> Any | None:
         result = select(selector, timeout=timeout)
     except TypeError:
         result = select(selector)
+    if not isawaitable(result):
+        return result
     try:
         return await asyncio.wait_for(result, timeout=timeout)
     except TimeoutError:
