@@ -75,7 +75,12 @@ from .humanize.turnstile import (
 from .humanize.warmer import ProfileWarmer, SyncProfileWarmer
 from .launchers import camoufox, nodriver
 from .launchers.camoufox import launch_camoufox
-from .launchers.nodriver import close_tab, launch_nodriver, nodriver_session
+from .launchers.nodriver import (
+    close_tab,
+    discover_active_cdp_endpoint,
+    launch_nodriver,
+    nodriver_session,
+)
 from .profiles.manager import ProfileManager
 from .profiles.models import BrowserProfile
 from .proxy.models import ProxyConfig, ProxyHealthResult
@@ -130,6 +135,7 @@ __all__ = [
     "concurrency",
     "decrypt_portable",
     "detect_cf_turnstile",
+    "discover_active_cdp_endpoint",
     "encrypt_portable",
     "find_unsupported_flags",
     "fingerprint",

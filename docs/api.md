@@ -45,6 +45,7 @@
 |---|---|
 | `launch_nodriver` | Фабрика запуска nodriver с санитайзингом профиля и флагами маскировки |
 | `nodriver_session` | Асинхронный контекстный менеджер безопасной сессии nodriver |
+| `discover_active_cdp_endpoint` | Поиск CDP-эндпоинта Chromium, уже использующего каталог профиля |
 | `close_tab` | Безопасное закрытие вкладки nodriver с таймаутом |
 | `launch_camoufox` | Запуск антидетект-браузера Camoufox (Firefox) |
 
