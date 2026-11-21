@@ -76,6 +76,7 @@ from .humanize.warmer import ProfileWarmer, SyncProfileWarmer
 from .launchers import camoufox, nodriver
 from .launchers.camoufox import launch_camoufox
 from .launchers.nodriver import (
+    cleanup_duplicate_empty_tabs,
     close_tab,
     discover_active_cdp_endpoint,
     launch_nodriver,
@@ -130,6 +131,7 @@ __all__ = [
     "bidi",
     "bidi_session",
     "camoufox",
+    "cleanup_duplicate_empty_tabs",
     "click",
     "close_tab",
     "concurrency",

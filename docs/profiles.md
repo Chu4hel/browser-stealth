@@ -60,6 +60,8 @@ sanitize_profile(profile_path)
 (по умолчанию) ищет активный CDP-эндпоинт и подключается к существующему окну
 вместо повторного запуска. Порт берётся из `DevToolsActivePort`, а при его
 отсутствии командная строка процессов проверяется через `Win32_Process` или `ps`.
+При подключении к существующему окну лишние пустые вкладки (`about:blank`,
+`chrome://newtab`) закрываются, а основная рабочая страница сохраняется.
 
 ```python
 from browser_stealth import discover_active_cdp_endpoint, launch_nodriver
