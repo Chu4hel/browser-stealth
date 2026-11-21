@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from browser_stealth.antidetect.config import AntidetectConfig
+from browser_stealth.connection import BROWSER_DETACHED_ATTR
 from browser_stealth.launchers.nodriver import (
     _get_nodriver_module,
     launch_nodriver,
@@ -53,6 +55,35 @@ async def test_launch_nodriver_default() -> None:
 
 
 @pytest.mark.asyncio
+async def test_launch_nodriver_uses_discovered_browser_executable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Без явного пути launch_nodriver использует найденный браузер."""
+    monkeypatch.delenv("BROWSER_EXECUTABLE_PATH", raising=False)
+    monkeypatch.delenv("CHROME_BIN", raising=False)
+    mock_uc = MagicMock()
+    mock_browser = MagicMock()
+    mock_browser.main_tab = MagicMock()
+    mock_uc.start = AsyncMock(return_value=mock_browser)
+
+    with (
+        patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
+        patch(
+            "browser_stealth.launchers.nodriver.discover_browser_executable",
+            return_value="/discovered/chrome",
+        ) as mock_discover,
+        patch("browser_stealth.launchers.nodriver.ensure_local_no_proxy") as mock_guard,
+        patch.object(AntidetectConfig, "apply_to_nodriver", new_callable=AsyncMock),
+    ):
+        await launch_nodriver(headless=True)
+
+    mock_guard.assert_called_once_with()
+    mock_discover.assert_called_once_with(None)
+    _, kwargs = mock_uc.start.call_args
+    assert kwargs["browser_executable_path"] == "/discovered/chrome"
+
+
+@pytest.mark.asyncio
 async def test_launch_nodriver_with_proxy_and_custom_args() -> None:
     """Проверка добавления аргументов прокси и пользовательских флагов."""
     mock_uc = MagicMock()
@@ -96,7 +127,7 @@ async def test_nodriver_session_context_manager() -> None:
 
 
 @pytest.mark.asyncio
-async def test_launch_nodriver_user_data_dir_and_executable() -> None:
+async def test_launch_nodriver_user_data_dir_and_executable(tmp_path: Path) -> None:
     """Проверка передачи user_data_dir и browser_executable_path в uc.start."""
     mock_uc = MagicMock()
     mock_browser = MagicMock()
@@ -108,16 +139,16 @@ async def test_launch_nodriver_user_data_dir_and_executable() -> None:
         patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
     ):
         await launch_nodriver(
-            user_data_dir="/tmp/chrome_profile",
+            user_data_dir=tmp_path,
             browser_executable_path="/usr/bin/google-chrome",
         )
         _, kwargs = mock_uc.start.call_args
-        assert kwargs["user_data_dir"] == "/tmp/chrome_profile"
+        assert kwargs["user_data_dir"] == str(tmp_path.resolve())
         assert kwargs["browser_executable_path"] == "/usr/bin/google-chrome"
 
 
 @pytest.mark.asyncio
-async def test_launch_nodriver_sanitizes_profile() -> None:
+async def test_launch_nodriver_sanitizes_profile(tmp_path: Path) -> None:
     """Проверка вызова sanitize_profile перед стартом nodriver при указании user_data_dir."""
     mock_uc = MagicMock()
     mock_browser = MagicMock()
@@ -129,8 +160,8 @@ async def test_launch_nodriver_sanitizes_profile() -> None:
         patch("browser_stealth.launchers.nodriver.AntidetectConfig.apply_to_nodriver", AsyncMock()),
         patch("browser_stealth.launchers.nodriver.sanitize_profile") as mock_sanitize,
     ):
-        await launch_nodriver(user_data_dir="/tmp/chrome_profile")
-        mock_sanitize.assert_called_once_with("/tmp/chrome_profile")
+        await launch_nodriver(user_data_dir=tmp_path)
+        mock_sanitize.assert_called_once_with(tmp_path.resolve())
 
 
 @pytest.mark.asyncio
@@ -201,9 +232,99 @@ def test_scraping_module_exports() -> None:
     assert hasattr(browser_stealth, "launch_nodriver")
     assert hasattr(browser_stealth, "nodriver_session")
     assert hasattr(browser_stealth, "close_tab")
+    assert hasattr(browser_stealth, "discover_active_cdp_endpoint")
     assert "launch_nodriver" in browser_stealth.__all__
     assert "nodriver_session" in browser_stealth.__all__
     assert "close_tab" in browser_stealth.__all__
+    assert "discover_active_cdp_endpoint" in browser_stealth.__all__
+
+
+@pytest.mark.asyncio
+async def test_launch_nodriver_reattaches_to_active_profile(tmp_path: Path) -> None:
+    """При auto_reattach подключение идёт к найденному CDP без санитизации профиля."""
+    mock_uc = MagicMock()
+    mock_browser = MagicMock()
+    mock_browser.main_tab = MagicMock()
+    mock_uc.start = AsyncMock(return_value=mock_browser)
+
+    with (
+        patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
+        patch(
+            "browser_stealth.launchers.nodriver.discover_active_cdp_endpoint",
+            return_value=("127.0.0.1", 9222),
+        ) as mock_discover,
+        patch("browser_stealth.launchers.nodriver.sanitize_profile") as mock_sanitize,
+        patch.object(AntidetectConfig, "apply_to_nodriver", new_callable=AsyncMock) as mock_apply,
+    ):
+        browser = await launch_nodriver(user_data_dir=tmp_path)
+
+    assert browser is mock_browser
+    mock_discover.assert_called_once_with(tmp_path)
+    mock_sanitize.assert_not_called()
+    assert getattr(mock_browser, "_browser_stealth_reattached") is True
+    assert mock_apply.called
+
+    _, kwargs = mock_uc.start.call_args
+    assert kwargs["host"] == "127.0.0.1"
+    assert kwargs["port"] == 9222
+    assert "user_data_dir" not in kwargs
+
+
+@pytest.mark.asyncio
+async def test_launch_nodriver_can_disable_auto_reattach(tmp_path: Path) -> None:
+    """При auto_reattach=False профиль не проверяется на активный CDP."""
+    mock_uc = MagicMock()
+    mock_browser = MagicMock()
+    mock_browser.main_tab = MagicMock()
+    mock_uc.start = AsyncMock(return_value=mock_browser)
+
+    with (
+        patch("browser_stealth.launchers.nodriver._get_nodriver_module", return_value=mock_uc),
+        patch("browser_stealth.launchers.nodriver.discover_active_cdp_endpoint") as mock_discover,
+        patch("browser_stealth.launchers.nodriver.sanitize_profile"),
+        patch.object(AntidetectConfig, "apply_to_nodriver", new_callable=AsyncMock),
+    ):
+        await launch_nodriver(user_data_dir=tmp_path, auto_reattach=False)
+
+    mock_discover.assert_not_called()
+    _, kwargs = mock_uc.start.call_args
+    assert kwargs["user_data_dir"] == str(tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_nodriver_session_keeps_reattached_browser_running() -> None:
+    """Выход из сессии закрывает CDP-соединение, но не гасит чужой Chromium."""
+    mock_browser = MagicMock()
+    mock_browser.stop = AsyncMock()
+    mock_browser.aclose = AsyncMock()
+    mock_browser._browser_stealth_reattached = True
+
+    with patch(
+        "browser_stealth.launchers.nodriver.launch_nodriver",
+        new=AsyncMock(return_value=mock_browser),
+    ):
+        async with nodriver_session() as browser:
+            assert browser is mock_browser
+
+    mock_browser.stop.assert_not_called()
+    mock_browser.aclose.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_nodriver_session_skips_stop_after_graceful_detach() -> None:
+    """После detach_for_restart выход из сессии не завершает Chromium."""
+    mock_browser = MagicMock()
+    mock_browser.stop = AsyncMock()
+    setattr(mock_browser, BROWSER_DETACHED_ATTR, True)
+
+    with patch(
+        "browser_stealth.launchers.nodriver.launch_nodriver",
+        new=AsyncMock(return_value=mock_browser),
+    ):
+        async with nodriver_session() as browser:
+            assert browser is mock_browser
+
+    mock_browser.stop.assert_not_called()
 
 
 @pytest.mark.asyncio

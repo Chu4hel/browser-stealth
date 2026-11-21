@@ -88,7 +88,27 @@ await async_touch_swipe(page, start=(250, 700), end=(250, 200), duration=0.6)
 
 ---
 
-## 5. Обход Cloudflare Turnstile (`solve_cf_turnstile`)
+## 5. Ввод в controlled inputs React/Vue (`safe_dom_insert_text`)
+
+В SPA присваивание `element.value` может быть сброшено Virtual DOM. Для таких
+полей используйте `safe_dom_insert_text` (алиас `async_safe_insert_text`):
+функция берёт нативный setter из прототипа, отправляет `beforeinput` с
+`insertFromPaste`, затем `input` и `change`.
+
+```python
+from browser_stealth import async_safe_insert_text, async_type_text
+
+await async_safe_insert_text(tab, "textarea[name='answer']", "Текст ответа")
+
+# Для обычного набора оставьте react_fallback=True (по умолчанию),
+# чтобы после ввода выполнялась DOM-сверка controlled input.
+await async_type_text(tab, "input[name='email']", "user@example.com")
+```
+
+`react_fallback=False` отключает финальную DOM-сверку и оставляет только
+посимвольный ввод.
+
+## 6. Обход Cloudflare Turnstile (`solve_cf_turnstile`)
 
 Интеллектуальный механизм обнаружения и решения интерактивных капч Cloudflare:
 1. Поиск iframe с виджетом `challenges.cloudflare.com`.

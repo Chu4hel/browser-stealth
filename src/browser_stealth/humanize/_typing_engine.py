@@ -91,10 +91,57 @@ async def _dom_safe_paste(page: Any, selector: str, text: str) -> bool:
             res = await page.evaluate(
                 f"({JS_DOM_PASTE_SCRIPT})({json.dumps(selector)}, {json.dumps(text)})"
             )
-            return res is True
+            return bool(res)
         except Exception:
             return False
     return False
+
+
+async def safe_dom_insert_text(
+    page: Any,
+    selector: str,
+    text: str,
+    *,
+    timeout: float | None = None,
+) -> bool:
+    """Вставляет текст в controlled input React/Vue/Angular через нативный setter.
+
+    Виртуальный DOM React и Vue перехватывает присваивание ``element.value`` и
+    может сбросить его при следующей валидации. Функция использует дескриптор
+    ``value`` из прототипа элемента, затем отправляет ``beforeinput``,
+    ``input`` и ``change``, поэтому фреймворк видит обычное пользовательское
+    изменение. Дополнительный HTTP-запрос и клики не выполняются.
+
+    Args:
+        page: Объект страницы Playwright или вкладки nodriver с ``evaluate``.
+        selector: CSS-селектор поля ввода или contenteditable-элемента.
+        text: Вставляемый текст.
+        timeout: Максимальное время выполнения JavaScript в секундах.
+
+    Returns:
+        True, если текст удалось вставить, иначе False.
+
+    Example:
+        >>> from browser_stealth import async_safe_insert_text
+        >>> await async_safe_insert_text(tab, "textarea[name='answer']", "Ответ")
+    """
+    if not isinstance(selector, str) or not selector.strip():
+        return False
+    if not isinstance(text, str):
+        text = str(text)
+
+    coroutine = _dom_safe_paste(page, selector, text)
+    if timeout is None:
+        return await coroutine
+    try:
+        return await asyncio.wait_for(coroutine, timeout=timeout)
+    except TimeoutError:
+        logger.debug("Таймаут безопасной DOM-вставки текста в %s", selector)
+        return False
+
+
+async_safe_insert_text = safe_dom_insert_text
+"""Алиас :func:`safe_dom_insert_text` для явного асинхронного вызова."""
 
 
 async def _dom_safe_heal(page: Any, selector: str, expected_text: str) -> None:
@@ -112,6 +159,46 @@ async def _dom_safe_heal(page: Any, selector: str, expected_text: str) -> None:
             )
         except Exception:
             pass
+
+
+async def _async_find_input_element(page: Any, selector: str) -> Any:
+    """Находит элемент ввода в nodriver по CSS-селектору или видимому тексту.
+
+    В ``nodriver`` метод ``Tab.find()`` ищет элементы по видимому тексту, а не
+    по CSS-селектору, поэтому основным способом поиска является
+    ``Tab.select()``. Поиск по тексту остаётся безопасным фоллбеком для
+    случаев, когда передан не CSS-селектор.
+
+    Args:
+        page: Вкладка nodriver (Tab).
+        selector: CSS-селектор целевого элемента.
+
+    Returns:
+        Нативный элемент страницы.
+
+    Raises:
+        RuntimeError: Если элемент не найден ни по селектору, ни по тексту.
+    """
+    element: Any | None = None
+
+    select = getattr(page, "select", None)
+    if callable(select):
+        try:
+            element = await select(selector)
+        except Exception as exc:
+            logger.debug("Поиск элемента по CSS-селектору '%s' не удался: %s", selector, exc)
+
+    if element is None:
+        find = getattr(page, "find", None)
+        if callable(find):
+            try:
+                element = await find(selector)
+            except Exception as exc:
+                logger.debug("Поиск элемента по тексту '%s' не удался: %s", selector, exc)
+
+    if element is None:
+        raise RuntimeError(f"Не удалось найти элемент ввода по селектору или тексту: {selector!r}")
+    return element
 
 
 async def _cdp_native_paste(
@@ -142,7 +229,7 @@ async def _cdp_native_paste(
         await set_isolated_clipboard_text(page, text)
 
         # 2. Фокусируем элемент
-        element = await page.find(selector)
+        element = await _async_find_input_element(page, selector)
         await element.focus()
 
         # 3. Отправляем нативные CDP нажатия клавиш Ctrl+V / Cmd+V с командой paste
@@ -213,12 +300,13 @@ async def _async_type_nodriver(
     delay_gen: Any,
     typo_gen: Any,
     paste_mode: str = "cdp_insert",
+    react_fallback: bool = True,
 ) -> None:
     """Выполняет посимвольный ввод или paste для nodriver."""
     _ensure_nodriver()
     from nodriver.cdp import input_ as cdp_input
 
-    element = await page.find(selector)
+    element = await _async_find_input_element(page, selector)
     await element.focus()
 
     if paste_threshold is not None and len(text) >= paste_threshold:
@@ -323,7 +411,8 @@ async def _async_type_nodriver(
         if delay > 0:
             await asyncio.sleep(delay)
 
-    await _dom_safe_heal(page, selector, text)
+    if react_fallback:
+        await _dom_safe_heal(page, selector, text)
 
 
 async def _async_type_playwright(
@@ -341,6 +430,7 @@ async def _async_type_playwright(
     delay_gen: Any,
     typo_gen: Any,
     paste_mode: str = "cdp_insert",
+    react_fallback: bool = True,
 ) -> None:
     """Выполняет посимвольный ввод или paste для Playwright."""
     _ensure_playwright()
@@ -390,4 +480,5 @@ async def _async_type_playwright(
         if delay > 0:
             await asyncio.sleep(delay)
 
-    await _dom_safe_heal(page, selector, text)
+    if react_fallback:
+        await _dom_safe_heal(page, selector, text)

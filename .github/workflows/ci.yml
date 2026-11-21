@@ -40,10 +40,8 @@ jobs:
       # .env не коммитится, но EnvSyncRule требует его наличия для проверки.
       - name: Sync environment template
         run: uv run chutils dev sync-env --yes
-      # ManifestRule отключён сознательно: манифест живёт в корне (AGENTS.md),
-      # пакетный antigravity.md не создаётся.
       - name: Run ai-lint
-        run: uv run chutils dev ai-lint --strict --exclude-rules ManifestRule
+        run: uv run chutils dev ai-lint --strict
 
   test:
     name: Unit tests (Python ${{ matrix.python-version }} on ${{ matrix.os }})
@@ -53,7 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v4
       - name: Install uv

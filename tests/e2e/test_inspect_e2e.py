@@ -118,3 +118,11 @@ async def test_inspect_snapshot_find_frames_screenshot_e2e(
                 shot_path = Path.cwd() / shot_path
             assert shot_path.exists()
             assert shot_path.stat().st_size > 0
+
+            archive = await inspect.save_mhtml(tab, tmp_path / "page.mhtml")
+            archive_path = Path(archive)
+            if not archive_path.is_absolute():
+                archive_path = Path.cwd() / archive_path
+            assert archive_path.exists()
+            assert archive_path.stat().st_size > 0
+            assert "multipart/related" in archive_path.read_text(encoding="utf-8")

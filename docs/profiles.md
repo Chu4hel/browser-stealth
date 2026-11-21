@@ -56,6 +56,31 @@ sanitize_profile(profile_path)
 
 Фабрика `launch_nodriver` автоматически выполняет санитайзинг перед запуском, если передан параметр `sanitize_profile_dir=True`.
 
+Если профиль уже используется запущенным Chromium, `launch_nodriver(auto_reattach=True)`
+(по умолчанию) ищет активный CDP-эндпоинт и подключается к существующему окну
+вместо повторного запуска. Порт берётся из `DevToolsActivePort`, а при его
+отсутствии командная строка процессов проверяется через `Win32_Process` или `ps`.
+При подключении к существующему окну лишние пустые вкладки (`about:blank`,
+`chrome://newtab`) закрываются, а основная рабочая страница сохраняется.
+
+```python
+from browser_stealth import (
+    discover_active_cdp_endpoint,
+    launch_nodriver,
+    resolve_profile_dir,
+)
+
+profile = resolve_profile_dir("/path/to/profile")
+endpoint = discover_active_cdp_endpoint(profile)
+if endpoint is not None:
+    host, port = endpoint
+
+browser = await launch_nodriver(user_data_dir=profile)
+```
+
+Для UNC-путей Windows (`\\\\server\\share\\profile`) `resolve_profile_dir`
+автоматически перенаправляет профиль в `%LOCALAPPDATA%/browser-stealth`.
+
 ---
 
 ## 3. Прогрев профиля (`ProfileWarmer`)

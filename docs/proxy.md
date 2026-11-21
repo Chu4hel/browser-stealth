@@ -62,3 +62,23 @@ pool = ProxyPool(
 
 proxy = pool.get_next_proxy()
 ```
+
+---
+
+## 4. Защита локального CDP от системного прокси (`ensure_local_no_proxy`)
+
+При включённом VPN или корпоративном прокси запросы к `127.0.0.1:<port>` могут
+уйти через прокси и заблокировать nodriver. Функция гарантированно добавляет
+loopback-адреса в обе переменные окружения:
+
+```python
+from browser_stealth import ensure_local_no_proxy
+
+ensure_local_no_proxy()
+# NO_PROXY=...,127.0.0.1,localhost,::1
+# no_proxy=...,127.0.0.1,localhost,::1
+```
+
+`launch_nodriver()` и `ChromiumProcessManager.launch()` вызывают её
+автоматически до поиска CDP-эндпоинта и запуска браузера. Существующие записи
+`NO_PROXY` сохраняются, дубликаты не добавляются.

@@ -86,6 +86,60 @@ links = await inspect.find(tab, selector="nav", text="Каталог", limit=5)
 Без критериев (`text`, `role`, `selector`) функция поднимает `ValueError` —
 для полного обзора используйте `snapshot`.
 
+## `async_find_cascade`
+
+Когда после A/B-теста селекторы меняются, последовательные `tab.select()` с
+таймаутами накапливают секунды ожидания. `async_find_cascade` проверяет весь
+список CSS-селекторов одним JavaScript-вызовом `document.querySelector` и
+получает Element только для сработавшего варианта:
+
+```python
+from browser_stealth import inspect
+
+element, matched = await inspect.async_find_cascade(
+    tab,
+    ["[data-qa='submit']", "button[type='submit']"],
+    text_markers=["Отправить"],
+)
+print(matched)  # например, "button[type='submit']" или "text:Отправить"
+```
+
+Текстовый fallback использует `safe_find` и не обходит кросс-доменные iframe.
+
+## `audit_selectors`
+
+Selector Doctor проверяет словарь селекторов на живой странице и возвращает
+статус и задержку каждого варианта:
+
+```python
+report = await inspect.audit_selectors(
+    tab,
+    {
+        "submit": ["[data-qa='submit']", "button[type='submit']"],
+        "search": ["[data-qa='search-input']", "input[type='search']"],
+    },
+)
+# {"submit": {"status": "ok", "primary": ..., "matched_by": ..., "latency_ms": 1.2}}
+```
+
+Статусы: `ok` — сработал primary, `fallback` — запасной селектор, `missing` —
+ничего не найдено.
+
+## `collect_page_failure_context`
+
+Вызывайте из `except`, чтобы сохранить контекст сбоя без падения диагностики:
+
+```python
+try:
+    await action()
+except Exception:
+    context = await inspect.collect_page_failure_context(tab)
+    print(context["page_url"], context["has_captcha"], context["visible_modals"])
+```
+
+Возвращает URL, заголовок, `h1`, тексты видимых модалок, признаки формы
+логина, капчи и архива вакансии, а также сниппет текста страницы.
+
 ## `screenshot`
 
 ```python
@@ -97,6 +151,43 @@ full = await inspect.screenshot(tab, "artifacts/full.jpeg", full_page=True, imag
 фингерпринт страницы и полезен, когда семантика не описывает вёрстку:
 изображения, canvas, сложные сетки. Для визуальной проверки лучше запускать
 браузер в headed-режиме: `headless=True` меняет поверхность фингерпринта.
+
+## `save_mhtml`
+
+```python
+archive = await inspect.save_mhtml(tab, "artifacts/page.mhtml")
+```
+
+Сохраняет оффлайн-архив страницы через CDP `Page.captureSnapshot(format="mhtml")`:
+в один файл попадают HTML, стили, изображения и вложенные фреймы. Это удобно для
+архивации доказательств, разбора инцидентов и просмотра страницы без сети.
+
+Архив не заменяет `snapshot` для анализа: он тяжёлый и не структурирован под
+ИИ. Выгрузка медиа (`<video>`, аудио, lazy-load галереи) в MHTML не входит — для
+неё нужна отдельная логика под конкретный сайт. Для быстрой отладки без архива
+достаточно `tab.get_content()` и `inspect.screenshot`.
+
+Если нужны сырые байты без записи на диск, используйте
+`await inspect.capture_page_snapshot_mhtml(tab)`.
+
+## `captcha_snapshot` и HITL
+
+Графическая капча снимается из уже загруженного `<img>` через Canvas и base64:
+повторного HTTP-запроса нет, поэтому сервер не аннулирует токен.
+
+```python
+from browser_stealth import captcha, inspect
+
+state = await captcha.detect_hh_captcha(tab)
+if state["found"]:
+    snapshot = await captcha.captcha_snapshot(tab)
+    await captcha.save_captcha_snapshot(tab, "artifacts/captcha.png")
+    solved = await captcha.wait_for_manual_captcha_resolution(tab, timeout=180)
+```
+
+`wait_for_manual_captcha_resolution` опрашивает страницу и вызывает
+`on_status(status)` после каждой проверки; колбэк может быть sync или async.
+Для диагностики сбоев используйте `inspect.collect_page_failure_context`.
 
 ## `frames`
 

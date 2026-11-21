@@ -35,6 +35,7 @@
 | `scroll_to`, `async_scroll_to` | Плавная прокрутка страницы с переменной скоростью |
 | `human_sleep`, `async_human_sleep` | Случайная пауза в заданном диапазоне |
 | `async_touch_tap`, `async_touch_swipe` | Эмуляция мобильных тач-событий |
+| `safe_dom_insert_text`, `async_safe_insert_text` | Вставка в controlled inputs React/Vue/Angular через нативный setter и InputEvent |
 | `solve_cf_turnstile` | Поиск и решение интерактивного чекбокса Cloudflare Turnstile |
 
 ---
@@ -45,6 +46,10 @@
 |---|---|
 | `launch_nodriver` | Фабрика запуска nodriver с санитайзингом профиля и флагами маскировки |
 | `nodriver_session` | Асинхронный контекстный менеджер безопасной сессии nodriver |
+| `discover_active_cdp_endpoint` | Поиск CDP-эндпоинта Chromium, уже использующего каталог профиля |
+| `cleanup_duplicate_empty_tabs` | Закрытие лишних пустых вкладок с сохранением рабочей страницы |
+| `discover_browser_executable` | Поиск установленного Chrome, Edge/EdgeCore, Yandex Browser или Brave |
+| `resolve_profile_dir` | Разрешение профиля и перенаправление UNC-путей на локальный диск |
 | `close_tab` | Безопасное закрытие вкладки nodriver с таймаутом |
 | `launch_camoufox` | Запуск антидетект-браузера Camoufox (Firefox) |
 
@@ -94,6 +99,10 @@ Read-only инспекция страницы для ИИ-агентов и от
 | `find` | Поиск узлов по тексту, роли или CSS-селектору с возвратом описаний и селекторов |
 | `screenshot` | Снимок экрана (в том числе всей страницы) в файл или base64 |
 | `frames` | Плоское дерево фреймов с `id`, `parent_id`, `url` и глубиной |
+| `async_find_cascade` | Атомарный поиск по списку CSS-селекторов и текстовым маркерам |
+| `audit_selectors` | Selector Doctor: отчёт `ok`/`fallback`/`missing` с latency |
+| `collect_page_failure_context` | URL, заголовок, модалки, капча и архивный маркер при сбое |
+| `capture_page_snapshot_mhtml` | Сырые байты MHTML-снимка без записи файла |
 | `InspectionError` | Общее исключение чтения страницы (вкладка недоступна, CDP-ошибка, неверный ответ) |
 
 ---
@@ -142,3 +151,57 @@ Read-only инспекция страницы для ИИ-агентов и от
 | `DOMActionRecorder`, `DOMActionRecorderHUD` | Запись действий пользователя и HUD-чек-лист |
 | `LiveBrowserSession` | Изолированная сессия реального браузера с гарантированной очисткой |
 | `assert_extraction_complete`, `assert_schema_match`, `assert_valid_url`, `assert_valid_price` | Проверки полноты и формата извлечённых данных |
+
+---
+
+## 11. Модуль `browser_stealth.connection`
+
+Диагностика WebSocket, процесса и состояния CDP-сессии.
+
+| Имя | Описание |
+|---|---|
+| `check_browser_alive` | Проверка локального процесса и удалённого CDP-подключения |
+| `is_ws_closed` | Проверка закрытия WebSocket для websockets >= 14 и старых версий |
+| `is_browser_connection_error` | Классификация ошибок `BrokenPipe`, `target closed`, `session closed` |
+| `get_browser_main_tab` | Безопасное получение `main_tab` без `StopIteration` |
+| `ping_browser_tab` | Быстрый CDP-пинг вкладки |
+| `extract_cdp_endpoint` | Извлечение `host` и `port` из объекта браузера |
+| `detach_for_restart` | Закрытие WebSocket без завершения процесса Chromium |
+
+---
+
+## 12. Модуль `browser_stealth.env`
+
+Защита локальных CDP-адресов от системного прокси.
+
+| Имя | Описание |
+|---|---|
+| `ensure_local_no_proxy` | Добавляет `127.0.0.1`, `localhost`, `::1` в `NO_PROXY` и `no_proxy` |
+| `LOCAL_NO_PROXY_HOSTS` | Кортеж loopback-адресов, исключаемых из проксирования |
+
+---
+
+## 13. Модуль `browser_stealth.forms`
+
+Извлечение и стелс-заполнение Google Forms, Яндекс.Форм, Typeform, Tally и обычных форм.
+
+| Имя | Описание |
+|---|---|
+| `extract_form_questions` | Извлечение вопросов с типами `text`, `textarea`, `choice`, `number`, `select` |
+| `fill_form` | Заполнение формы ответами с нативными событиями `input`/`change` |
+| `FormQuestion` | Модель вопроса: текст, тип, обязательность, ответ и селектор |
+| `build_fill_form_js` | JS-скрипт заполнения для собственных сценариев |
+
+---
+
+## 14. Модуль `browser_stealth.captcha`
+
+Снимок графической капчи без повторного HTTP-запроса и HITL-ожидание.
+
+| Имя | Описание |
+|---|---|
+| `detect_hh_captcha` | Определение капчи HH.ru и её состояния (`image`/`container`/`absent`) |
+| `captcha_snapshot` | Canvas PNG, base64, SHA-256 и `captcha_key` |
+| `save_captcha_snapshot` | Сохранение PNG-снимка капчи на диск |
+| `wait_for_manual_captcha_resolution` | Ожидание ручного решения с sync/async колбэком |
+| `CaptchaSnapshot` | Модель снимка: байты, размеры, `src`, `sha256` |

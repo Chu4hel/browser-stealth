@@ -4,26 +4,34 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import json
 import os
-import shutil
-import sys
-import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from chutils.fs import ensure_dir
-
 from browser_stealth.antidetect import get_browser_launch_args
 from browser_stealth.antidetect.config import AntidetectConfig
 from browser_stealth.antidetect.flags import FlagPolicy, sanitize_browser_args
+from browser_stealth.connection import BROWSER_DETACHED_ATTR
+from browser_stealth.env import ensure_local_no_proxy
+from browser_stealth.launchers._browser_paths import (
+    discover_browser_executable,
+    resolve_profile_dir,
+)
+from browser_stealth.launchers._cdp_discovery import discover_active_cdp_endpoint
 from browser_stealth.launchers._cdp_startup import (
     STARTUP_TIMEOUT,
     await_cdp_ready,
     pick_pending_browser,
     registered_browsers,
+)
+from browser_stealth.launchers._cdp_values import safe_extract_dict, unpack_cdp_value
+from browser_stealth.launchers._nodriver_tabs import (
+    _pick_primary_tab,
+    cleanup_duplicate_empty_tabs,
+    close_tab,
+    safe_get_or_open_tab,
 )
 from browser_stealth.lifecycle import register_cleanup
 from browser_stealth.logging import get_logger as setup_logger
@@ -36,6 +44,8 @@ from browser_stealth.proxy.adapters import get_nodriver_proxy_args
 from browser_stealth.proxy.models import ProxyConfig
 
 logger = setup_logger(__name__)
+
+_REATTACHED_ATTR = "_browser_stealth_reattached"
 
 
 def _get_nodriver_module() -> Any:
@@ -58,28 +68,153 @@ def _get_nodriver_module() -> Any:
         ) from err
 
 
-async def close_tab(tab: Any, *, timeout: float = 3.0) -> None:
-    """Безопасно закрывает вкладку nodriver с защитой от зависания CDP-сокета.
-
-    Если вкладка потерпела крах (Renderer Crash) или CDP не отвечает,
-    операция прерывается по истечении таймаута без зависания вызывающего потока.
+async def _configure_browser(
+    browser: Any,
+    config: AntidetectConfig,
+    *,
+    apply_config_to_tab: bool,
+    patch_tab_find: bool,
+    reattached: bool,
+) -> None:
+    """Регистрирует очистку и применяет настройки антидетекта к вкладке.
 
     Args:
-        tab: Объект вкладки nodriver (nodriver.Tab).
-        timeout: Максимальное время ожидания закрытия вкладки в секундах.
+        browser: Экземпляр nodriver.Browser.
+        config: Конфигурация антидетекта.
+        apply_config_to_tab: Применять ли конфигурацию к основной вкладке.
+        patch_tab_find: Устанавливать ли безопасную обёртку ``Tab.find``.
+        reattached: True, если браузер уже был запущен и не принадлежит сессии.
     """
-    close_method = getattr(tab, "close", None)
-    if callable(close_method):
-        res = close_method()
+
+    def _cleanup_browser() -> Any:
+        try:
+            if getattr(browser, BROWSER_DETACHED_ATTR, False) is True:
+                return None
+            if reattached:
+                close_method = getattr(browser, "aclose", None)
+                if callable(close_method):
+                    return close_method()
+                return None
+
+            stop_method = getattr(browser, "stop", None)
+            if callable(stop_method):
+                return stop_method()
+        except Exception:
+            pass
+        return None
+
+    register_cleanup(_cleanup_browser)
+
+    await cleanup_duplicate_empty_tabs(browser)
+    tab = _pick_primary_tab(browser)
+    if tab is None and (apply_config_to_tab or patch_tab_find):
+        tab = getattr(browser, "main_tab", None)
+        if tab is None:
+            tabs = getattr(browser, "tabs", [])
+            if tabs:
+                tab = tabs[0]
+
+    if patch_tab_find and tab is not None:
+        try:
+            from browser_stealth.humanize.safe_find import install_safe_find
+
+            install_safe_find(tab)
+        except Exception as exc:
+            logger.debug(f"Не удалось установить безопасный Tab.find: {exc}")
+
+    if apply_config_to_tab and tab is not None:
+        try:
+            await config.apply_to_nodriver(tab)
+        except Exception as exc:
+            logger.debug(f"Не удалось применить AntidetectConfig к вкладке nodriver: {exc}")
+
+
+async def _reattach_browser(
+    uc: Any,
+    endpoint: tuple[str, int],
+    *,
+    config: AntidetectConfig,
+    apply_config_to_tab: bool,
+    patch_tab_find: bool,
+    kwargs: dict[str, Any],
+) -> Any:
+    """Подключается к уже запущенному Chromium по CDP и настраивает вкладку.
+
+    Args:
+        uc: Модуль nodriver.
+        endpoint: Пара ``(host, port)`` активного CDP-эндпоинта.
+        config: Конфигурация антидетекта.
+        apply_config_to_tab: Применять ли конфигурацию к основной вкладке.
+        patch_tab_find: Устанавливать ли безопасную обёртку ``Tab.find``.
+        kwargs: Дополнительные параметры для ``uc.start``.
+
+    Returns:
+        Подключённый экземпляр nodriver.Browser.
+
+    Raises:
+        RuntimeError: Если подключиться к найденному эндпоинту не удалось.
+    """
+    host, port = endpoint
+    start_kwargs = dict(kwargs)
+    start_kwargs.pop("host", None)
+    start_kwargs.pop("port", None)
+    try:
+        browser = await uc.start(host=host, port=port, **start_kwargs)
+    except Exception as exc:
+        raise RuntimeError(
+            f"Не удалось переподключиться к активному Chromium на {host}:{port}: {exc}"
+        ) from exc
+
+    setattr(browser, _REATTACHED_ATTR, True)
+    logger.info("Подключение к уже запущенному Chromium на %s:%d", host, port)
+    await _configure_browser(
+        browser,
+        config,
+        apply_config_to_tab=apply_config_to_tab,
+        patch_tab_find=patch_tab_find,
+        reattached=True,
+    )
+    return browser
+
+
+async def _close_browser(browser: Any, *, timeout: float) -> None:
+    """Закрывает соединение с браузером, не останавливая чужой процесс.
+
+    Args:
+        browser: Экземпляр nodriver.Browser.
+        timeout: Максимальное время ожидания закрытия.
+    """
+    if getattr(browser, BROWSER_DETACHED_ATTR, False) is True:
+        return
+    if getattr(browser, _REATTACHED_ATTR, False) is True:
+        close_method = getattr(browser, "aclose", None)
+        if callable(close_method):
+            res = close_method()
+            if inspect.isawaitable(res):
+                try:
+                    await asyncio.wait_for(res, timeout=timeout)
+                except TimeoutError:
+                    logger.debug(
+                        "Таймаут (%.1fс) при закрытии CDP-соединения, принудительное завершение.",
+                        timeout,
+                    )
+                except Exception as exc:
+                    logger.debug(f"Ошибка при закрытии CDP-соединения: {exc}")
+        return
+
+    stop_method = getattr(browser, "stop", None)
+    if callable(stop_method):
+        res = stop_method()
         if inspect.isawaitable(res):
             try:
                 await asyncio.wait_for(res, timeout=timeout)
             except TimeoutError:
                 logger.debug(
-                    f"Таймаут ({timeout}с) при закрытии вкладки nodriver, принудительное завершение."
+                    "Таймаут (%.1fс) при остановке браузера nodriver, принудительное завершение.",
+                    timeout,
                 )
             except Exception as exc:
-                logger.debug(f"Ошибка при закрытии вкладки nodriver: {exc}")
+                logger.debug(f"Ошибка при остановке браузера nodriver: {exc}")
 
 
 async def launch_nodriver(
@@ -93,6 +228,7 @@ async def launch_nodriver(
     browser_args_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
+    auto_reattach: bool = True,
     patch_tab_find: bool = True,
     sandbox: bool | None = None,
     **kwargs: Any,
@@ -115,17 +251,43 @@ async def launch_nodriver(
         sanitize_profile_dir: Если True и передан user_data_dir, перед запуском браузера сбрасывает флаги
             аварийного завершения (exit_type="Normal") и очищает остаточные сессии/вкладки,
             предотвращая инфобар восстановления вкладок и детекты антифрода.
+        auto_reattach: Если True и профиль уже используется запущенным Chromium, ищет его
+            CDP-эндпоинт и подключается к существующему окну вместо повторного запуска.
         patch_tab_find: Если True, заменяет ``Tab.find`` безопасной обёрткой, которая ищет текст
             только в основном документе и не опрашивает сторонние iframe (ошибка -32601).
         **kwargs: Дополнительные параметры для передачи в nodriver.start().
 
     Returns:
         Экземпляр nodriver.Browser.
+
+    Raises:
+        RuntimeError: Если найденный CDP-эндпоинт не удалось подключить.
     """
+    ensure_local_no_proxy()
     uc = _get_nodriver_module()
 
     if config is None:
         config = AntidetectConfig.preset_stealth_nodriver()
+
+    if user_data_dir is not None:
+        user_data_dir = resolve_profile_dir(user_data_dir)
+
+    # Переподключение к уже запущенному Chromium до санитизации профиля
+    if auto_reattach and user_data_dir is not None:
+        try:
+            endpoint = discover_active_cdp_endpoint(user_data_dir)
+        except Exception as exc:
+            logger.debug(f"Не удалось найти активный CDP-эндпоинт: {exc}")
+            endpoint = None
+        if endpoint is not None:
+            return await _reattach_browser(
+                uc,
+                endpoint,
+                config=config,
+                apply_config_to_tab=apply_config_to_tab,
+                patch_tab_find=patch_tab_find,
+                kwargs=kwargs,
+            )
 
     # Сборка базовых стелс-аргументов запуска
     recommended_args = get_browser_launch_args()
@@ -159,23 +321,14 @@ async def launch_nodriver(
         except Exception as exc:
             logger.debug(f"Не удалось выполнить sanitize_profile для {user_data_dir}: {exc}")
 
-    # На Linux nodriver выбирает самый короткий путь к браузеру, из-за чего
-    # может взять snap-обёртку chromium вместо настоящего Google Chrome.
-    # Предпочитаем явный google-chrome, чтобы избежать проблем в CI.
+    # Кроссплатформенный поиск браузера: Chrome, Edge/EdgeCore, Yandex, Brave.
     if browser_executable_path is None:
         env_path = os.environ.get(  # chutils: ignore[ChutilsIntegrationRule]
             "BROWSER_EXECUTABLE_PATH"
         ) or os.environ.get(  # chutils: ignore[ChutilsIntegrationRule]
             "CHROME_BIN"  # chutils: ignore[ChutilsIntegrationRule]
         )
-        if env_path and Path(env_path).exists():
-            browser_executable_path = env_path
-        elif sys.platform.startswith("linux"):
-            for candidate in ("google-chrome", "google-chrome-stable", "chrome"):
-                found = shutil.which(candidate)
-                if found:
-                    browser_executable_path = found
-                    break
+        browser_executable_path = discover_browser_executable(env_path)
 
     # Запуск браузера
     start_kwargs: dict[str, Any] = dict(kwargs)
@@ -207,48 +360,13 @@ async def launch_nodriver(
         )
         browser = await await_cdp_ready(uc, pending, timeout=STARTUP_TIMEOUT)
 
-    # Регистрация очистки в жизненном цикле
-    def _cleanup_browser() -> None:
-        try:
-            stop_method = getattr(browser, "stop", None)
-            if callable(stop_method):
-                res = stop_method()
-                if inspect.iscoroutine(res):
-                    try:
-                        loop = asyncio.get_running_loop()
-                        loop.create_task(res)
-                    except RuntimeError:
-                        pass
-
-        except Exception:
-            pass
-
-    register_cleanup(_cleanup_browser)
-
-    # Разрешение основной вкладки для патча find и применения AntidetectConfig
-    tab = None
-    if apply_config_to_tab or patch_tab_find:
-        tab = getattr(browser, "main_tab", None)
-        if tab is None:
-            tabs = getattr(browser, "tabs", [])
-            if tabs:
-                tab = tabs[0]
-
-    # Безопасный Tab.find без обхода недоверенных iframe
-    if patch_tab_find and tab is not None:
-        try:
-            from browser_stealth.humanize.safe_find import install_safe_find
-
-            install_safe_find(tab)
-        except Exception as exc:
-            logger.debug(f"Не удалось установить безопасный Tab.find: {exc}")
-
-    # Применение AntidetectConfig к открытой вкладке
-    if apply_config_to_tab and tab is not None:
-        try:
-            await config.apply_to_nodriver(tab)
-        except Exception as exc:
-            logger.debug(f"Не удалось применить AntidetectConfig к вкладке nodriver: {exc}")
+    await _configure_browser(
+        browser,
+        config,
+        apply_config_to_tab=apply_config_to_tab,
+        patch_tab_find=patch_tab_find,
+        reattached=False,
+    )
 
     return browser
 
@@ -265,6 +383,7 @@ async def nodriver_session(
     browser_args_policy: FlagPolicy | str = FlagPolicy.SANITIZE,
     apply_config_to_tab: bool = True,
     sanitize_profile_dir: bool = True,
+    auto_reattach: bool = True,
     patch_tab_find: bool = True,
     sandbox: bool | None = None,
     **kwargs: Any,
@@ -281,6 +400,7 @@ async def nodriver_session(
         browser_args_policy: Политика обработки неподдерживаемых флагов Chromium.
         apply_config_to_tab: Автоматически применить AntidetectConfig к вкладке.
         sanitize_profile_dir: Выполнить санитайзинг профиля перед запуском.
+        auto_reattach: Подключаться к уже запущенному Chromium, использующему профиль.
         patch_tab_find: Заменить ``Tab.find`` безопасной обёрткой без обхода сторонних iframe.
         **kwargs: Дополнительные параметры nodriver.start().
 
@@ -297,6 +417,7 @@ async def nodriver_session(
         browser_args_policy=browser_args_policy,
         apply_config_to_tab=apply_config_to_tab,
         sanitize_profile_dir=sanitize_profile_dir,
+        auto_reattach=auto_reattach,
         patch_tab_find=patch_tab_find,
         sandbox=sandbox,
         **kwargs,
@@ -304,128 +425,7 @@ async def nodriver_session(
     try:
         yield browser
     finally:
-        stop_method = getattr(browser, "stop", None)
-        if callable(stop_method):
-            res = stop_method()
-            if inspect.isawaitable(res):
-                try:
-                    await asyncio.wait_for(res, timeout=5.0)
-                except TimeoutError:
-                    logger.debug(
-                        "Таймаут (5.0с) при остановке браузера nodriver, принудительное завершение."
-                    )
-                except Exception as exc:
-                    logger.debug(f"Ошибка при остановке браузера nodriver: {exc}")
-
-
-async def safe_get_or_open_tab(
-    browser: Any,
-    url: str,
-    timeout: float = 10.0,
-) -> Any:
-    """Безопасно переходит по URL или открывает новую вкладку с защитой от race conditions nodriver.
-
-    Предотвращает RuntimeError('coroutine raised StopIteration'), возникающий в nodriver,
-    когда browser.get(new_tab=False) вызывается до момента регистрации начального page target.
-
-    Args:
-        browser: Экземпляр nodriver Browser.
-        url: Целевой URL веб-страницы.
-        timeout: Таймаут ожидания появления открытой страницы (сек).
-
-    Returns:
-        Объект активной вкладки Tab.
-    """
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            if hasattr(browser, "update_targets") and callable(browser.update_targets):
-                res_upd = browser.update_targets()
-                if inspect.isawaitable(res_upd):
-                    await res_upd
-            targets = getattr(browser, "targets", None)
-            if isinstance(targets, list):
-                page_tabs = [
-                    t
-                    for t in targets
-                    if getattr(getattr(t, "target", None), "type_", None) == "page"
-                ]
-                if page_tabs:
-                    break
-            elif targets is not None:
-                break
-        except Exception:
-            pass
-        await asyncio.sleep(0.15)
-
-    try:
-        return await browser.get(url)
-    except (StopIteration, RuntimeError, Exception) as exc:
-        if "StopIteration" in str(exc) or isinstance(exc, StopIteration):
-            logger.warning(
-                "nodriver browser.get() вызвал ошибку race condition (%s), принудительно открываем через new_tab=True...",
-                exc,
-            )
-            return await browser.get(url, new_tab=True)
-        raise
-
-
-def unpack_cdp_value(v: object) -> object:
-    """Рекурсивно извлекает примитивные значения из структур CDP.
-
-    Args:
-        v: Значение CDP: dict, list, пара key/value или примитив.
-
-    Returns:
-        Развернутое значение: dict, list или примитив без оберток CDP.
-    """
-    if isinstance(v, dict):
-        if "value" in v:
-            return unpack_cdp_value(v["value"])
-        return {str(k): unpack_cdp_value(val) for k, val in v.items()}
-    if isinstance(v, list):
-        if v and all(
-            isinstance(i, (list, tuple)) and len(i) == 2 and isinstance(i[0], str) for i in v
-        ):
-            return safe_extract_dict(v)
-        return [unpack_cdp_value(i) for i in v]
-    return v
-
-
-def safe_extract_dict(val: object) -> dict[str, object]:
-    """Безопасно извлекает словарь из результата evaluate (строка JSON, список пар или dict).
-
-    Args:
-        val: Сырой результат вызова tab.evaluate.
-
-    Returns:
-        Распакованный словарь с данными.
-    """
-    if isinstance(val, dict):
-        return val
-    if isinstance(val, str):
-        try:
-            parsed = json.loads(val)
-            if isinstance(parsed, dict):
-                return parsed
-        except Exception as exc:
-            logger.debug(
-                "Ошибка десериализации JSON из CDP evaluate: %s (val[:100]=%r)",
-                exc,
-                val[:100] if isinstance(val, str) else val,
-            )
-            return {}
-    if isinstance(val, list):
-        res: dict[str, object] = {}
-        for item in val:
-            if isinstance(item, (list, tuple)) and len(item) == 2:
-                k, v = item
-                if isinstance(k, str):
-                    res[k] = unpack_cdp_value(v)
-            elif isinstance(item, dict) and "name" in item and "value" in item:
-                res[str(item["name"])] = unpack_cdp_value(item["value"])
-        return res
-    return {}
+        await _close_browser(browser, timeout=5.0)
 
 
 class ChromiumProcessManager:
@@ -463,8 +463,11 @@ class ChromiumProcessManager:
         Returns:
             Кортеж из (nodriver.Browser, AsyncProxyTunnel | None).
         """
-        p_path = ensure_dir(Path(profile_path).resolve())
+        ensure_local_no_proxy()
+        p_path = resolve_profile_dir(profile_path)
         user_data_str = str(p_path)
+        if browser_executable_path is None:
+            browser_executable_path = discover_browser_executable()
 
         recommended_args = get_browser_launch_args()
         browser_args: list[str] = [
@@ -638,10 +641,14 @@ __all__ = [
     "IdleBrowserReaperConfig",
     "IdleReaper",
     "IdleReaperConfig",
+    "cleanup_duplicate_empty_tabs",
     "close_tab",
+    "discover_active_cdp_endpoint",
+    "discover_browser_executable",
     "is_profile_locked",
     "launch_nodriver",
     "nodriver_session",
+    "resolve_profile_dir",
     "safe_extract_dict",
     "safe_get_or_open_tab",
     "sanitize_profile",
