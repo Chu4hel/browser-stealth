@@ -77,6 +77,45 @@ Chromium по CDP и устойчивость сессии при рестарт
 - `launch_nodriver()` и `ChromiumProcessManager` используют эти функции
   автоматически.
 
+### Сетевое окружение: No-Proxy Guard
+
+- Новый `browser_stealth.env` с `ensure_local_no_proxy()`.
+- Функция добавляет `127.0.0.1`, `localhost` и `::1` в `NO_PROXY` и `no_proxy`,
+  сохраняя существующие записи.
+- `launch_nodriver()` и `ChromiumProcessManager.launch()` вызывают защиту до
+  поиска CDP и запуска браузера, поэтому VPN и корпоративный прокси больше не
+  перехватывают локальный WebSocket.
+
+### Controlled inputs: React/Vue/Angular
+
+- Добавлены `safe_dom_insert_text()` и алиас `async_safe_insert_text()`.
+- Вставка использует дескриптор `value` из прототипа и отправляет
+  `beforeinput` с `insertFromPaste`, `input` и `change`.
+- `async_type_text()` получил `react_fallback=True`: после посимвольного ввода
+  выполняется DOM-сверка controlled input; флаг можно отключить.
+
+### Каскадный поиск и диагностика
+
+- `inspect.async_find_cascade()` проверяет все CSS-селекторы одним
+  `document.querySelector` и получает Element только для сработавшего варианта.
+- Текстовые маркеры ищутся через `safe_find` без обхода кросс-доменных iframe.
+- `inspect.audit_selectors()` (Selector Doctor) возвращает `ok`, `fallback` или
+  `missing` с latency в миллисекундах.
+- `inspect.collect_page_failure_context()` собирает URL, заголовок, h1,
+  модалки, капчу, архивный маркер и сниппет текста.
+- MHTML можно получить сырыми байтами через
+  `inspect.capture_page_snapshot_mhtml()`.
+
+### Формы и графическая капча
+
+- Новый `browser_stealth.forms`: `extract_form_questions()` и `fill_form()`
+  для Google Forms, Яндекс.Форм, Typeform, Tally и обычных HTML-форм.
+- Поддерживаются типы `text`, `textarea`, `choice`, `number`, `select`,
+  обязательность, кастомные `[role="radio"]` и согласия на обработку ПД.
+- Новый `browser_stealth.captcha`: Canvas-снимок капчи без повторного
+  HTTP-запроса, `detect_hh_captcha`, `save_captcha_snapshot` и
+  `wait_for_manual_captcha_resolution` для HITL.
+
 ### Релизная инфраструктура
 
 - Версия поднята до `0.4.0` в `pyproject.toml`, `__version__` и `uv.lock`.
@@ -112,10 +151,15 @@ pip install "browser-stealth[testing,fingerprint,redis]==0.4.0"
 перенаправляет на локальный диск. `detach_for_restart()` — асинхронная
 функция; после неё сессия не должна вызывать `browser.stop()` повторно.
 
+`react_fallback=True` — новое поведение по умолчанию для `async_type_text()`:
+после набора выполняется DOM-сверка. Она не должна менять корректно введённый
+текст; при необходимости отключите её через `react_fallback=False`.
+`async_find_cascade()` возвращает `(element, matched_by)`, а не один элемент.
+
 ## Проверки
 
-- `pytest tests/unit`: `435 passed`.
-- `mypy src/browser_stealth`: 0 ошибок (103 файла).
+- `pytest tests/unit`: `458 passed`.
+- `mypy src/browser_stealth`: 0 ошибок (109 файлов).
 - `ruff check` / `ruff format --check`: чисто.
 - Дополнительно: 10 000 seed исходной геометрии и 500 случайных маршрутов
   WindMouse без выхода за цель.

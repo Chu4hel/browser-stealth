@@ -42,13 +42,29 @@ reattach по CDP и graceful detach без закрытия окна брауз
   Chrome, Chrome x86, Edge/EdgeCore, Yandex Browser и Brave в стандартных
   каталогах Windows, Linux и macOS. `resolve_profile_dir()` перенаправляет
   UNC-профили Windows в `%LOCALAPPDATA%/browser-stealth`.
+- **No-Proxy Guard (`env`)**: новый `ensure_local_no_proxy()` добавляет
+  `127.0.0.1`, `localhost`, `::1` в `NO_PROXY`/`no_proxy` и вызывается из
+  `launch_nodriver()` и `ChromiumProcessManager.launch()`.
+- **Controlled inputs (`humanize`)**: `safe_dom_insert_text()` и
+  `async_safe_insert_text()` используют нативный setter, `beforeinput`,
+  `input` и `change`. `async_type_text()` получил `react_fallback=True`.
+- **Каскад и диагностика (`inspect`)**: `async_find_cascade()` выполняет
+  атомарный JS-поиск, `audit_selectors()` даёт отчёт Selector Doctor,
+  `collect_page_failure_context()` собирает контекст сбоя, а
+  `capture_page_snapshot_mhtml()` возвращает сырой MHTML.
+- **Формы (`forms`)**: `extract_form_questions()` и `fill_form()` для Google
+  Forms, Яндекс.Форм, Typeform, Tally и обычных форм; поддержаны `text`,
+  `textarea`, `choice`, `number`, `select` и согласия на обработку ПД.
+- **Капча (`captcha`)**: Canvas-снимок без повторного HTTP-запроса,
+  `detect_hh_captcha`, `save_captcha_snapshot` и
+  `wait_for_manual_captcha_resolution` для HITL.
 - **Релиз**: версия поднята до `0.4.0` в `pyproject.toml`, `__version__`
   и `uv.lock`; новых обязательных зависимостей нет.
 
 ## Проверки
 
-- `pytest tests/unit`: 435 passed
-- `mypy src/browser_stealth`: 0 ошибок (103 файла)
+- `pytest tests/unit`: 458 passed
+- `mypy src/browser_stealth`: 0 ошибок (109 файлов)
 - `ruff check` / `ruff format --check`: чисто
 - Дополнительно проверено: 10 000 seed исходной геометрии и 500 случайных
   маршрутов WindMouse без выхода за цель
@@ -76,7 +92,11 @@ reattach по CDP и graceful detach без закрытия окна брауз
 перенаправляет в локальный `%LOCALAPPDATA%`. `detach_for_restart()` асинхронный:
 после него нельзя вызывать `browser.stop()`, иначе окно Chromium закроется.
 Автопоиск браузера может выбрать установленный Chrome/Edge/Yandex/Brave, если
-`browser_executable_path` не задан явно.
+`browser_executable_path` не задан явно. `react_fallback=True` включает
+финальную DOM-сверку controlled input; для чистого посимвольного ввода
+передайте `react_fallback=False`. `async_find_cascade()` возвращает кортеж
+`(element, matched_by)`, а `captcha_snapshot()` отдаёт PNG-байты через Canvas,
+поэтому для неё не нужен повторный HTTP-запрос.
 
 ## Связанные issues
 
