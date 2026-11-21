@@ -1,7 +1,8 @@
-Релиз `0.4.0`: два точечных исправления поведения, новый инструмент инспекции
-и переподключение к уже запущенному Chromium. Ветка закрывает занос WindMouse
-в соседний пункт компактного меню, чинит поиск поля ввода в nodriver, добавляет
-сохранение страницы в MHTML и автоматический reattach по CDP.
+Релиз `0.4.0`: два точечных исправления поведения, новый инструмент инспекции,
+переподключение к уже запущенному Chromium и устойчивость сессии при рестарте.
+Ветка закрывает занос WindMouse в соседний пункт компактного меню, чинит поиск
+поля ввода в nodriver, добавляет сохранение страницы в MHTML, автоматический
+reattach по CDP и graceful detach без закрытия окна браузера.
 
 ## Основные изменения
 
@@ -28,13 +29,26 @@
   по `--remote-debugging-port` и `--user-data-dir`. Кандидат проверяется
   HTTP-запросом к `/json/version` в обход локальных прокси. Сессия,
   подключённая к чужому Chromium, при выходе закрывает только CDP-соединение.
+- **Переподключение и вкладки (`launchers`)**: после reattach закрываются
+  лишние пустые вкладки (`about:blank`, `chrome://newtab`), рабочая страница
+  сохраняется.
+- **Graceful detach (`connection`)**: новый модуль `browser_stealth.connection`.
+  `detach_for_restart(browser)` закрывает WebSocket и помечает сессию
+  отвязанной без `browser.stop()`; `extract_cdp_endpoint(browser)` возвращает
+  `host`/`port` для повторного подключения. Добавлены `check_browser_alive`,
+  `is_ws_closed`, `is_browser_connection_error`, `get_browser_main_tab` и
+  `ping_browser_tab`.
+- **Поиск браузера и UNC (`launchers`)**: `discover_browser_executable()` ищет
+  Chrome, Chrome x86, Edge/EdgeCore, Yandex Browser и Brave в стандартных
+  каталогах Windows, Linux и macOS. `resolve_profile_dir()` перенаправляет
+  UNC-профили Windows в `%LOCALAPPDATA%/browser-stealth`.
 - **Релиз**: версия поднята до `0.4.0` в `pyproject.toml`, `__version__`
   и `uv.lock`; новых обязательных зависимостей нет.
 
 ## Проверки
 
-- `pytest tests/unit`: 412 passed
-- `mypy src/browser_stealth`: 0 ошибок (101 файл)
+- `pytest tests/unit`: 435 passed
+- `mypy src/browser_stealth`: 0 ошибок (103 файла)
 - `ruff check` / `ruff format --check`: чисто
 - Дополнительно проверено: 10 000 seed исходной геометрии и 500 случайных
   маршрутов WindMouse без выхода за цель
@@ -57,6 +71,12 @@
 чужой Chromium при выходе; закрывается только CDP-соединение. Если эндпоинт
 найден, но подключение не удалось, выбрасывается `RuntimeError` с адресом
 эндпоинта, а не выполняется повторный запуск поверх занятого профиля.
+
+`resolve_profile_dir()` теперь всегда возвращает абсолютный путь, а UNC-профили
+перенаправляет в локальный `%LOCALAPPDATA%`. `detach_for_restart()` асинхронный:
+после него нельзя вызывать `browser.stop()`, иначе окно Chromium закроется.
+Автопоиск браузера может выбрать установленный Chrome/Edge/Yandex/Brave, если
+`browser_executable_path` не задан явно.
 
 ## Связанные issues
 

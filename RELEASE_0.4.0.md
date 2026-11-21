@@ -1,8 +1,8 @@
 Стабильный релиз `0.4.0`: точечное обновление humanize, инспекции страниц
 и запуска nodriver. Ветка исправляет два воспроизведённых дефекта — занос
 WindMouse в соседний пункт компактного меню и поиск поля ввода в nodriver —
-добавляет сохранение страницы в MHTML и переподключение к уже открытому
-Chromium по CDP.
+добавляет сохранение страницы в MHTML, переподключение к уже открытому
+Chromium по CDP и устойчивость сессии при рестарте сервиса.
 
 ## Основные изменения
 
@@ -51,6 +51,31 @@ Chromium по CDP.
   локальных прокси.
 - При переподключении сессия закрывает только CDP-соединение и не завершает
   чужой процесс Chromium; `auto_reattach=False` возвращает прежний запуск.
+- После подключения закрываются лишние пустые вкладки (`about:blank`,
+  `chrome://newtab`), а основная рабочая страница сохраняется.
+
+### Graceful detach и диагностика соединения
+
+- Новый модуль `browser_stealth.connection`.
+- `detach_for_restart(browser)` закрывает WebSocket и помечает сессию
+  отвязанной, не вызывая `browser.stop()`: окно Chromium переживает рестарт
+  управляющего процесса.
+- `extract_cdp_endpoint(browser)` возвращает `host` и `port` для повторного
+  подключения.
+- `check_browser_alive()` корректно проверяет и локальный процесс, и внешнее
+  CDP-подключение, где `browser._process is None`.
+- Добавлены `is_ws_closed`, `is_browser_connection_error`,
+  `get_browser_main_tab` и `ping_browser_tab` для диагностики падений
+  Renderer Crash и разрывов WebSocket.
+
+### Кроссплатформенный поиск браузера и UNC-профили
+
+- `discover_browser_executable()` ищет Chrome, Chrome x86, Edge/EdgeCore,
+  Yandex Browser и Brave в стандартных каталогах Windows, Linux и macOS.
+- `resolve_profile_dir()` перенаправляет UNC-профили Windows (`\\server\share`)
+  в `%LOCALAPPDATA%/browser-stealth`, предотвращая сбои SQLite/LevelDB.
+- `launch_nodriver()` и `ChromiumProcessManager` используют эти функции
+  автоматически.
 
 ### Релизная инфраструктура
 
@@ -83,10 +108,14 @@ pip install "browser-stealth[testing,fingerprint,redis]==0.4.0"
 передайте `auto_reattach=False`. Сессия, подключённая к чужому Chromium, при
 выходе закрывает только CDP-соединение и не завершает браузер.
 
+`resolve_profile_dir()` теперь возвращает абсолютный путь, а UNC-профили
+перенаправляет на локальный диск. `detach_for_restart()` — асинхронная
+функция; после неё сессия не должна вызывать `browser.stop()` повторно.
+
 ## Проверки
 
-- `pytest tests/unit`: `412 passed`.
-- `mypy src/browser_stealth`: 0 ошибок (101 файл).
+- `pytest tests/unit`: `435 passed`.
+- `mypy src/browser_stealth`: 0 ошибок (103 файла).
 - `ruff check` / `ruff format --check`: чисто.
 - Дополнительно: 10 000 seed исходной геометрии и 500 случайных маршрутов
   WindMouse без выхода за цель.
