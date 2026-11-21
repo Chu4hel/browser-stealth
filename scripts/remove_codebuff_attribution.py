@@ -19,8 +19,9 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import NoReturn
+
+from chutils.time import utc_now
 
 DEFAULT_RANGE = "@{upstream}..HEAD"
 FOOTER_PATTERNS = (
@@ -93,7 +94,14 @@ def run_git(
 
 
 def is_footer_line(line: str) -> bool:
-    """Проверяет, является ли строка подписью Codebuff."""
+    """Проверяет, является ли строка подписью Codebuff.
+
+    Args:
+        line: Проверяемая строка.
+
+    Returns:
+        ``True``, если строка является подписью Codebuff.
+    """
     return any(pattern.fullmatch(line.strip()) for pattern in FOOTER_PATTERNS)
 
 
@@ -186,7 +194,14 @@ def read_commit(sha: str) -> CommitData:
 
 
 def identity_env(commit: CommitData) -> dict[str, str]:
-    """Формирует окружение для сохранения авторства и дат коммита."""
+    """Формирует окружение для сохранения авторства и дат коммита.
+
+    Args:
+        commit: Данные коммита.
+
+    Returns:
+        Словарь переменных окружения для ``git commit-tree``.
+    """
     env = os.environ.copy()
     env.update(
         {
@@ -217,6 +232,9 @@ def ensure_clean_tree() -> None:
 def current_branch() -> str:
     """Возвращает имя текущей ветки.
 
+    Returns:
+        Имя текущей локальной ветки.
+
     Raises:
         GitError: Если HEAD отделён от ветки.
     """
@@ -246,13 +264,27 @@ def resolve_commits(rev_range: str) -> list[str]:
 
 
 def subject(sha: str) -> str:
-    """Возвращает первую строку сообщения коммита."""
+    """Возвращает первую строку сообщения коммита.
+
+    Args:
+        sha: Полный хеш коммита.
+
+    Returns:
+        Первая строка сообщения коммита.
+    """
     return run_git("show", "-s", "--format=%s", sha).strip()
 
 
 def backup_ref(branch: str) -> str:
-    """Создаёт уникальное имя резервной ссылки."""
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    """Создаёт уникальное имя резервной ссылки.
+
+    Args:
+        branch: Имя текущей ветки.
+
+    Returns:
+        Имя резервной ссылки git.
+    """
+    timestamp = utc_now().strftime("%Y%m%dT%H%M%S%fZ")
     safe_branch = re.sub(r"[^A-Za-z0-9._-]+", "-", branch)
     return f"refs/backup/codebuff-clean/{timestamp}-{safe_branch}"
 
@@ -312,7 +344,11 @@ def rewrite_commits(commits: list[str], branch: str) -> str:
 
 
 def parse_args() -> argparse.Namespace:
-    """Разбирает аргументы командной строки."""
+    """Разбирает аргументы командной строки.
+
+    Returns:
+        Разобранные аргументы командной строки.
+    """
     parser = argparse.ArgumentParser(
         description="Удаляет подпись Codebuff из сообщений незапушенных коммитов."
     )
@@ -330,7 +366,14 @@ def parse_args() -> argparse.Namespace:
 
 
 def fail(message: str) -> NoReturn:
-    """Печатает ошибку и завершает скрипт."""
+    """Печатает ошибку и завершает скрипт.
+
+    Args:
+        message: Текст ошибки.
+
+    Returns:
+        Функция не возвращает значение.
+    """
     print(f"Ошибка: {message}", file=sys.stderr)
     raise SystemExit(1)
 
