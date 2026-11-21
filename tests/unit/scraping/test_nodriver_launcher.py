@@ -68,10 +68,12 @@ async def test_launch_nodriver_uses_discovered_browser_executable() -> None:
             "browser_stealth.launchers.nodriver.discover_browser_executable",
             return_value="/discovered/chrome",
         ) as mock_discover,
+        patch("browser_stealth.launchers.nodriver.ensure_local_no_proxy") as mock_guard,
         patch.object(AntidetectConfig, "apply_to_nodriver", new_callable=AsyncMock),
     ):
         await launch_nodriver(headless=True)
 
+    mock_guard.assert_called_once_with()
     mock_discover.assert_called_once_with(None)
     _, kwargs = mock_uc.start.call_args
     assert kwargs["browser_executable_path"] == "/discovered/chrome"

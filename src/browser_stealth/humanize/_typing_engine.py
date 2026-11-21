@@ -91,10 +91,57 @@ async def _dom_safe_paste(page: Any, selector: str, text: str) -> bool:
             res = await page.evaluate(
                 f"({JS_DOM_PASTE_SCRIPT})({json.dumps(selector)}, {json.dumps(text)})"
             )
-            return res is True
+            return bool(res)
         except Exception:
             return False
     return False
+
+
+async def safe_dom_insert_text(
+    page: Any,
+    selector: str,
+    text: str,
+    *,
+    timeout: float | None = None,
+) -> bool:
+    """Вставляет текст в controlled input React/Vue/Angular через нативный setter.
+
+    Виртуальный DOM React и Vue перехватывает присваивание ``element.value`` и
+    может сбросить его при следующей валидации. Функция использует дескриптор
+    ``value`` из прототипа элемента, затем отправляет ``beforeinput``,
+    ``input`` и ``change``, поэтому фреймворк видит обычное пользовательское
+    изменение. Дополнительный HTTP-запрос и клики не выполняются.
+
+    Args:
+        page: Объект страницы Playwright или вкладки nodriver с ``evaluate``.
+        selector: CSS-селектор поля ввода или contenteditable-элемента.
+        text: Вставляемый текст.
+        timeout: Максимальное время выполнения JavaScript в секундах.
+
+    Returns:
+        True, если текст удалось вставить, иначе False.
+
+    Example:
+        >>> from browser_stealth import async_safe_insert_text
+        >>> await async_safe_insert_text(tab, "textarea[name='answer']", "Ответ")
+    """
+    if not isinstance(selector, str) or not selector.strip():
+        return False
+    if not isinstance(text, str):
+        text = str(text)
+
+    coroutine = _dom_safe_paste(page, selector, text)
+    if timeout is None:
+        return await coroutine
+    try:
+        return await asyncio.wait_for(coroutine, timeout=timeout)
+    except TimeoutError:
+        logger.debug("Таймаут безопасной DOM-вставки текста в %s", selector)
+        return False
+
+
+async_safe_insert_text = safe_dom_insert_text
+"""Алиас :func:`safe_dom_insert_text` для явного асинхронного вызова."""
 
 
 async def _dom_safe_heal(page: Any, selector: str, expected_text: str) -> None:
@@ -253,6 +300,7 @@ async def _async_type_nodriver(
     delay_gen: Any,
     typo_gen: Any,
     paste_mode: str = "cdp_insert",
+    react_fallback: bool = True,
 ) -> None:
     """Выполняет посимвольный ввод или paste для nodriver."""
     _ensure_nodriver()
@@ -363,7 +411,8 @@ async def _async_type_nodriver(
         if delay > 0:
             await asyncio.sleep(delay)
 
-    await _dom_safe_heal(page, selector, text)
+    if react_fallback:
+        await _dom_safe_heal(page, selector, text)
 
 
 async def _async_type_playwright(
@@ -381,6 +430,7 @@ async def _async_type_playwright(
     delay_gen: Any,
     typo_gen: Any,
     paste_mode: str = "cdp_insert",
+    react_fallback: bool = True,
 ) -> None:
     """Выполняет посимвольный ввод или paste для Playwright."""
     _ensure_playwright()
@@ -430,4 +480,5 @@ async def _async_type_playwright(
         if delay > 0:
             await asyncio.sleep(delay)
 
-    await _dom_safe_heal(page, selector, text)
+    if react_fallback:
+        await _dom_safe_heal(page, selector, text)

@@ -24,7 +24,10 @@ async def test_chromium_process_manager_launch_and_stop(tmp_path: Path) -> None:
     mock_proc._transport = MagicMock()
     mock_browser._process = mock_proc
 
-    with patch("nodriver.start", new=AsyncMock(return_value=mock_browser)) as mock_start:
+    with (
+        patch("nodriver.start", new=AsyncMock(return_value=mock_browser)) as mock_start,
+        patch("browser_stealth.launchers.nodriver.ensure_local_no_proxy") as mock_guard,
+    ):
         browser, tunnel = await mgr.launch(
             profile_path=profile_dir,
             headless=True,
@@ -37,6 +40,7 @@ async def test_chromium_process_manager_launch_and_stop(tmp_path: Path) -> None:
         args = call_kwargs.get("browser_args", [])
         assert "--disable-session-crashed-bubble" in args
         assert "--hide-crash-restore-bubble" in args
+        mock_guard.assert_called_once_with()
 
     # Проверяем остановку
     await mgr.stop(browser=mock_browser, profile_path=profile_dir)

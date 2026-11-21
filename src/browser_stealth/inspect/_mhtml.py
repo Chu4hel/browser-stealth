@@ -44,6 +44,47 @@ def _snapshot_data(result: Any) -> str:
     return data if isinstance(data, str) else ""
 
 
+async def capture_page_snapshot_mhtml(
+    tab: Any,
+    *,
+    timeout: float = 30.0,
+) -> bytes:
+    """Возвращает MHTML-снимок страницы как байты.
+
+    Использует CDP ``Page.captureSnapshot(format="mhtml")`` и не выполняет
+    повторных HTTP-запросов к ресурсам страницы.
+
+    Args:
+        tab: Вкладка nodriver с методом ``send``.
+        timeout: Таймаут CDP-вызова в секундах.
+
+    Returns:
+        Байты MHTML-документа.
+
+    Raises:
+        InspectionError: Если вкладка не поддерживает CDP-вызов, браузер
+            вернул пустой снимок или CDP завершился ошибкой.
+    """
+    send = getattr(tab, "send", None)
+    if not callable(send):
+        raise InspectionError("Вкладка не поддерживает CDP-метод send.")
+
+    command = _capture_snapshot_command()
+    try:
+        result = send(command)
+        if asyncio.iscoroutine(result):
+            result = await asyncio.wait_for(result, timeout=timeout)
+    except TimeoutError as exc:
+        raise InspectionError(f"Таймаут MHTML-снимка за {timeout} с.") from exc
+    except Exception as exc:
+        raise InspectionError(f"Не удалось получить MHTML-снимок: {exc}") from exc
+
+    data = _snapshot_data(result)
+    if not data:
+        raise InspectionError("Браузер вернул пустой MHTML-снимок.")
+    return data.encode("utf-8")
+
+
 async def save_mhtml(
     tab: Any,
     path: Path | str,
@@ -74,36 +115,19 @@ async def save_mhtml(
         >>> from browser_stealth import inspect
         >>> mhtml_path = await inspect.save_mhtml(tab, "artifacts/page.mhtml")
     """
-    send = getattr(tab, "send", None)
-    if not callable(send):
-        raise InspectionError("Вкладка не поддерживает CDP-метод send.")
-
-    command = _capture_snapshot_command()
+    data = await capture_page_snapshot_mhtml(tab, timeout=timeout)
     target = Path(path)
     if str(target.parent) not in ("", "."):
         ensure_dir(target.parent)
 
     try:
-        result = send(command)
-        if asyncio.iscoroutine(result):
-            result = await asyncio.wait_for(result, timeout=timeout)
-    except TimeoutError as exc:
-        raise InspectionError(f"Таймаут MHTML-снимка за {timeout} с.") from exc
-    except Exception as exc:
-        raise InspectionError(f"Не удалось получить MHTML-снимок: {exc}") from exc
-
-    data = _snapshot_data(result)
-    if not data:
-        raise InspectionError("Браузер вернул пустой MHTML-снимок.")
-
-    try:
         # Бинарная запись сохраняет исходные переводы строк MHTML:
         # текстовый режим на Windows превращает CRLF в CRCRLF.
-        atomic_write(target, data.encode("utf-8"), mode="wb")
+        atomic_write(target, data, mode="wb")
     except Exception as exc:
         raise InspectionError(f"Не удалось записать MHTML-снимок: {exc}") from exc
 
     return str(target)
 
 
-__all__ = ["save_mhtml"]
+__all__ = ["capture_page_snapshot_mhtml", "save_mhtml"]

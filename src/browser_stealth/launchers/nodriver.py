@@ -16,6 +16,7 @@ from browser_stealth.antidetect import get_browser_launch_args
 from browser_stealth.antidetect.config import AntidetectConfig
 from browser_stealth.antidetect.flags import FlagPolicy, sanitize_browser_args
 from browser_stealth.connection import BROWSER_DETACHED_ATTR
+from browser_stealth.env import ensure_local_no_proxy
 from browser_stealth.launchers._browser_paths import (
     discover_browser_executable,
     resolve_profile_dir,
@@ -407,6 +408,7 @@ async def launch_nodriver(
     Raises:
         RuntimeError: Если найденный CDP-эндпоинт не удалось подключить.
     """
+    ensure_local_no_proxy()
     uc = _get_nodriver_module()
 
     if config is None:
@@ -716,6 +718,7 @@ class ChromiumProcessManager:
         Returns:
             Кортеж из (nodriver.Browser, AsyncProxyTunnel | None).
         """
+        ensure_local_no_proxy()
         p_path = resolve_profile_dir(profile_path)
         user_data_str = str(p_path)
         if browser_executable_path is None:

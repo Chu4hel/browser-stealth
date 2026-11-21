@@ -17,8 +17,10 @@ from ._actions_helpers import (
     _run_with_timeout,
     _safe_get_async_url,
     async_human_sleep,
+    async_safe_insert_text,
     click,
     human_sleep,
+    safe_dom_insert_text,
 )
 from .math_utils import (
     BezierCurveGenerator,
@@ -47,6 +49,7 @@ __all__ = [
     "async_click",
     "async_human_sleep",
     "async_move_mouse",
+    "async_safe_insert_text",
     "async_scroll_to",
     "async_touch_swipe",
     "async_touch_tap",
@@ -54,6 +57,7 @@ __all__ = [
     "click",
     "human_sleep",
     "move_mouse",
+    "safe_dom_insert_text",
     "scroll_to",
     "type_text",
 ]
@@ -244,6 +248,7 @@ async def async_type_text(
     post_typing_delay: tuple[float, float] = (0.25, 0.8),
     jitter_mouse: bool = True,
     timeout: float | None = None,
+    react_fallback: bool = True,
 ) -> None:
     """Имитирует ввод текста с опечатками Playwright или nodriver.
 
@@ -267,6 +272,8 @@ async def async_type_text(
         post_typing_delay: Диапазон паузы восприятия после набора текста в секундах.
         jitter_mouse: Выполнять ли микросмещение курсора мыши (2-6 px) после набора текста.
         timeout: Таймаут выполнения операции в секундах.
+        react_fallback: Выполнять ли DOM-сверку и вставку через нативный setter
+            после посимвольного ввода для React/Vue/Angular controlled inputs.
     """
 
     async def _type() -> None:
@@ -289,6 +296,7 @@ async def async_type_text(
                 delay_gen=delay_gen,
                 typo_gen=typo_gen,
                 paste_mode=paste_mode,
+                react_fallback=react_fallback,
             )
         elif _is_playwright(page):
             await _async_type_playwright(
@@ -305,6 +313,7 @@ async def async_type_text(
                 delay_gen=delay_gen,
                 typo_gen=typo_gen,
                 paste_mode=paste_mode,
+                react_fallback=react_fallback,
             )
         else:
             raise ValueError(

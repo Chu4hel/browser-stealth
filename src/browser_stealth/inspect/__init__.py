@@ -16,15 +16,22 @@ Example:
 
 from __future__ import annotations
 
+from browser_stealth.inspect._audit import audit_selectors
+from browser_stealth.inspect._cascade import async_find_cascade
+from browser_stealth.inspect._failure import collect_page_failure_context
 from browser_stealth.inspect._find import DEFAULT_LIMIT, find
 from browser_stealth.inspect._frames import frames
-from browser_stealth.inspect._mhtml import save_mhtml
+from browser_stealth.inspect._mhtml import capture_page_snapshot_mhtml, save_mhtml
 from browser_stealth.inspect._screenshot import screenshot
 from browser_stealth.inspect._snapshot import DEFAULT_MAX_NODES, snapshot
 
 __all__ = [
     "DEFAULT_LIMIT",
     "DEFAULT_MAX_NODES",
+    "async_find_cascade",
+    "audit_selectors",
+    "capture_page_snapshot_mhtml",
+    "collect_page_failure_context",
     "find",
     "frames",
     "save_mhtml",

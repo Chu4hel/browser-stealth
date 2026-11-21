@@ -210,6 +210,7 @@ class BehavioralProfile(BaseModel):
         post_typing_delay: tuple[float, float] | None = None,
         jitter_mouse: bool | None = None,
         timeout: float | None = None,
+        react_fallback: bool = True,
     ) -> None:
         """Вводит текст через Playwright / nodriver с биометрическими параметрами профиля.
 
@@ -222,6 +223,7 @@ class BehavioralProfile(BaseModel):
             post_typing_delay: Диапазон паузы после ввода текста (если None, берется из профиля).
             jitter_mouse: Выполнять ли микросмещение мыши после набора (если None, берется из профиля).
             timeout: Таймаут операции в секундах.
+            react_fallback: Выполнять ли DOM-вставку через нативный setter для React/Vue.
         """
         threshold = self.paste_threshold if paste_threshold is None else paste_threshold
         mode = self.paste_mode if paste_mode is None else paste_mode
@@ -243,6 +245,7 @@ class BehavioralProfile(BaseModel):
             post_typing_delay=post_delay,
             jitter_mouse=jitter,
             timeout=timeout,
+            react_fallback=react_fallback,
         )
 
     async def async_click(

@@ -23,6 +23,8 @@ from ._typing_engine import (
     JS_DOM_PASTE_SCRIPT,
     _async_type_nodriver,
     _async_type_playwright,
+    async_safe_insert_text,
+    safe_dom_insert_text,
 )
 
 # Реэкспорт проверок зависимостей, JS-скриптов и движка ввода для обратной совместимости.
@@ -44,8 +46,10 @@ __all__ = [
     "_run_with_timeout",
     "_safe_get_async_url",
     "async_human_sleep",
+    "async_safe_insert_text",
     "click",
     "human_sleep",
+    "safe_dom_insert_text",
 ]
 
 logger = setup_logger(__name__)
