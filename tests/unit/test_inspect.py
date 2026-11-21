@@ -6,11 +6,13 @@ import asyncio
 import json
 import shutil
 import subprocess
+import sys
+from types import SimpleNamespace
 
 import pytest
 
 from browser_stealth.exceptions import InspectionError
-from browser_stealth.inspect import find, frames, screenshot, snapshot
+from browser_stealth.inspect import find, frames, save_mhtml, screenshot, snapshot
 from browser_stealth.inspect._collect import _JS_COLLECT, coerce_payload
 from browser_stealth.inspect._nodes import normalize_attrs, normalize_box, normalize_node
 
@@ -325,6 +327,106 @@ async def test_screenshot_timeout_is_wrapped() -> None:
 
     with pytest.raises(InspectionError, match="Таймаут"):
         await screenshot(SlowTab(), timeout=0.01)
+
+
+class FakeMhtmlTab:
+    """Вкладка с запоминанием CDP-команд и подменой результата."""
+
+    def __init__(self, result: object) -> None:
+        self.result = result
+        self.calls: list[object] = []
+
+    async def send(self, cdp_obj: object) -> object:
+        """Запоминает CDP-команду и возвращает заданный результат."""
+        self.calls.append(cdp_obj)
+        if isinstance(self.result, BaseException):
+            raise self.result
+        return self.result
+
+
+@pytest.mark.asyncio
+async def test_save_mhtml_writes_archive(tmp_path, monkeypatch) -> None:
+    """Проверяет отправку CDP-команды и запись архива с созданием директории."""
+    monkeypatch.setattr(
+        "browser_stealth.inspect._mhtml._capture_snapshot_command",
+        lambda: ("capture_snapshot", {"format_": "mhtml"}),
+    )
+    tab = FakeMhtmlTab("From: <Saved by Blink>\r\nSubject: Тест")
+    target = tmp_path / "archives" / "page.mhtml"
+
+    saved = await save_mhtml(tab, target)
+
+    assert saved == str(target)
+    assert tab.calls == [("capture_snapshot", {"format_": "mhtml"})]
+    raw = target.read_bytes()
+    assert raw.startswith(b"From: <Saved by Blink>\r\n")
+    assert b"\r\r\n" not in raw
+
+
+@pytest.mark.asyncio
+async def test_save_mhtml_accepts_cdp_object_and_dict(tmp_path, monkeypatch) -> None:
+    """Проверяет извлечение данных из объекта и словаря CDP."""
+    monkeypatch.setattr(
+        "browser_stealth.inspect._mhtml._capture_snapshot_command",
+        lambda: ("capture_snapshot", {"format_": "mhtml"}),
+    )
+    object_tab = FakeMhtmlTab(SimpleNamespace(data="From: object"))
+    dict_tab = FakeMhtmlTab({"data": "From: dict"})
+    object_path = tmp_path / "object.mhtml"
+    dict_path = tmp_path / "dict.mhtml"
+
+    await save_mhtml(object_tab, object_path)
+    await save_mhtml(dict_tab, dict_path)
+
+    assert object_path.read_text(encoding="utf-8") == "From: object"
+    assert dict_path.read_text(encoding="utf-8") == "From: dict"
+
+
+@pytest.mark.asyncio
+async def test_save_mhtml_errors(tmp_path, monkeypatch) -> None:
+    """Проверяет ошибки для неподдерживаемой вкладки, пустого ответа и сбоя CDP."""
+    monkeypatch.setattr(
+        "browser_stealth.inspect._mhtml._capture_snapshot_command",
+        lambda: ("capture_snapshot", {"format_": "mhtml"}),
+    )
+
+    with pytest.raises(InspectionError, match="send"):
+        await save_mhtml(object(), tmp_path / "no-send.mhtml")
+
+    with pytest.raises(InspectionError, match="пустой"):
+        await save_mhtml(FakeMhtmlTab(""), tmp_path / "empty.mhtml")
+
+    with pytest.raises(InspectionError, match="CDP отвалился"):
+        await save_mhtml(
+            FakeMhtmlTab(RuntimeError("CDP отвалился")),
+            tmp_path / "broken.mhtml",
+        )
+
+
+@pytest.mark.asyncio
+async def test_save_mhtml_timeout_is_wrapped(tmp_path, monkeypatch) -> None:
+    """Проверяет таймаут CDP-вызова."""
+    monkeypatch.setattr(
+        "browser_stealth.inspect._mhtml._capture_snapshot_command",
+        lambda: ("capture_snapshot", {"format_": "mhtml"}),
+    )
+
+    class SlowTab:
+        async def send(self, cdp_obj: object) -> str:
+            await asyncio.sleep(1)
+            return "late"
+
+    with pytest.raises(InspectionError, match="Таймаут"):
+        await save_mhtml(SlowTab(), tmp_path / "slow.mhtml", timeout=0.01)
+
+
+@pytest.mark.asyncio
+async def test_save_mhtml_requires_nodriver(tmp_path, monkeypatch) -> None:
+    """Проверяет понятную ошибку без установленного nodriver."""
+    monkeypatch.setitem(sys.modules, "nodriver", None)
+
+    with pytest.raises(InspectionError, match="nodriver"):
+        await save_mhtml(FakeMhtmlTab("From: test"), tmp_path / "page.mhtml")
 
 
 class FakeFrame:

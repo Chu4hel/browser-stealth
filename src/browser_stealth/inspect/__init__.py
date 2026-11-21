@@ -1,8 +1,8 @@
 """Read-only инспекция страницы для ИИ-агентов и отладки.
 
 Модуль даёт агенту «глаза» на антидетект-браузер: компактный семантический
-снимок страницы, поиск элементов по тексту и роли, снимок экрана и дерево
-фреймов. Все функции только читают состояние страницы и не выполняют кликов
+снимок страницы, поиск элементов по тексту и роли, снимок экрана, MHTML-архив
+и дерево фреймов. Все функции только читают состояние страницы и не выполняют кликов
 или ввода — действия остаются за :mod:`browser_stealth.humanize`, чтобы
 события оставались настоящими (``isTrusted=true``).
 
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from browser_stealth.inspect._find import DEFAULT_LIMIT, find
 from browser_stealth.inspect._frames import frames
+from browser_stealth.inspect._mhtml import save_mhtml
 from browser_stealth.inspect._screenshot import screenshot
 from browser_stealth.inspect._snapshot import DEFAULT_MAX_NODES, snapshot
 
@@ -26,6 +27,7 @@ __all__ = [
     "DEFAULT_MAX_NODES",
     "find",
     "frames",
+    "save_mhtml",
     "screenshot",
     "snapshot",
 ]

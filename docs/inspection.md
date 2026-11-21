@@ -98,6 +98,21 @@ full = await inspect.screenshot(tab, "artifacts/full.jpeg", full_page=True, imag
 изображения, canvas, сложные сетки. Для визуальной проверки лучше запускать
 браузер в headed-режиме: `headless=True` меняет поверхность фингерпринта.
 
+## `save_mhtml`
+
+```python
+archive = await inspect.save_mhtml(tab, "artifacts/page.mhtml")
+```
+
+Сохраняет оффлайн-архив страницы через CDP `Page.captureSnapshot(format="mhtml")`:
+в один файл попадают HTML, стили, изображения и вложенные фреймы. Это удобно для
+архивации доказательств, разбора инцидентов и просмотра страницы без сети.
+
+Архив не заменяет `snapshot` для анализа: он тяжёлый и не структурирован под
+ИИ. Выгрузка медиа (`<video>`, аудио, lazy-load галереи) в MHTML не входит — для
+неё нужна отдельная логика под конкретный сайт. Для быстрой отладки без архива
+достаточно `tab.get_content()` и `inspect.screenshot`.
+
 ## `frames`
 
 ```python
