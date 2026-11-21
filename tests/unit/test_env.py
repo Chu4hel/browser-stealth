@@ -21,6 +21,7 @@ def test_ensure_local_no_proxy_sets_both_variables(monkeypatch) -> None:
 
 def test_ensure_local_no_proxy_preserves_and_deduplicates_entries(monkeypatch) -> None:
     """Существующие записи сохраняются, дубликаты не добавляются."""
+    monkeypatch.delenv("no_proxy", raising=False)
     monkeypatch.setenv("NO_PROXY", "example.com, LOCALHOST, 10.0.0.0/8")
 
     ensure_local_no_proxy()

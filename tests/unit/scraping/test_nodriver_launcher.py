@@ -55,8 +55,12 @@ async def test_launch_nodriver_default() -> None:
 
 
 @pytest.mark.asyncio
-async def test_launch_nodriver_uses_discovered_browser_executable() -> None:
+async def test_launch_nodriver_uses_discovered_browser_executable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Без явного пути launch_nodriver использует найденный браузер."""
+    monkeypatch.delenv("BROWSER_EXECUTABLE_PATH", raising=False)
+    monkeypatch.delenv("CHROME_BIN", raising=False)
     mock_uc = MagicMock()
     mock_browser = MagicMock()
     mock_browser.main_tab = MagicMock()

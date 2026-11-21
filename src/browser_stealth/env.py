@@ -25,15 +25,26 @@ def ensure_local_no_proxy() -> None:
         Прямая запись в `os.environ` необходима: переменные влияют на сетевые
         клиенты процесса, а не только на код библиотеки.
     """
+    # Собираем записи из обеих переменных: на Linux они различаются
+    # по регистру, поэтому синхронизируем их, чтобы обе содержали полный набор.
+    entries: list[str] = []
+    known: set[str] = set()
     for key in ("NO_PROXY", "no_proxy"):
         current = os.environ.get(key, "")  # chutils: ignore[ChutilsIntegrationRule]
-        entries = [part.strip() for part in current.split(",") if part.strip()]
-        known = {part.casefold() for part in entries}
-        for host in LOCAL_NO_PROXY_HOSTS:
-            if host.casefold() not in known:
-                entries.append(host)
-                known.add(host.casefold())
-        os.environ[key] = ",".join(entries)  # chutils: ignore[ChutilsIntegrationRule]
+        for part in current.split(","):
+            value = part.strip()
+            if value and value.casefold() not in known:
+                entries.append(value)
+                known.add(value.casefold())
+
+    for host in LOCAL_NO_PROXY_HOSTS:
+        if host.casefold() not in known:
+            entries.append(host)
+            known.add(host.casefold())
+
+    result = ",".join(entries)
+    os.environ["NO_PROXY"] = result  # chutils: ignore[ChutilsIntegrationRule]
+    os.environ["no_proxy"] = result  # chutils: ignore[ChutilsIntegrationRule]
 
 
 __all__ = ["LOCAL_NO_PROXY_HOSTS", "ensure_local_no_proxy"]
