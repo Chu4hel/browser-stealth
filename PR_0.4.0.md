@@ -63,7 +63,7 @@ reattach по CDP и graceful detach без закрытия окна брауз
 
 ## Проверки
 
-- `pytest tests/unit`: 458 passed
+- `pytest tests/unit`: 459 passed
 - `mypy src/browser_stealth`: 0 ошибок (111 файлов)
 - `ruff check` / `ruff format --check`: чисто
 - Дополнительно проверено: 10 000 seed исходной геометрии и 500 случайных
